@@ -78,7 +78,7 @@ export default function HistoryList({ items, onSelectItem, onDeleteItem }: Histo
         <div className="space-y-1">
           <h1 className="font-sans font-bold text-3xl text-slate-900">Generation History</h1>
           <p className="font-sans text-sm text-slate-500">
-            Review, manage, and download previously generated system integration testing (SIT) scopes.
+            Review, manage, and download previously generated Test Execution Report scopes.
           </p>
         </div>
 

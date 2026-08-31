@@ -34,7 +34,7 @@ async function startServer() {
     return next();
   });
 
-  // API Route - Generate SIT Test Cases using OpenAI
+  // API Route - Generate Test Execution Report using OpenAI
   app.post("/api/generate", async (req: any, res: any) => {
     try {
       const { moduleName, requirement, businessRules, coverages, screenshot } = req.body;
@@ -58,7 +58,7 @@ async function startServer() {
         return res.json({ scenarios, isMock: true, provider });
       }
 
-      let promptText = `Analyze this QA specification and identify comprehensive System Integration Testing (SIT) test cases.
+      let promptText = `Analyze this QA specification and identify comprehensive Test Execution Report test cases.
 
 Module Name: ${moduleName}
 Requirement: ${requirement || "None specified"}
@@ -118,7 +118,7 @@ Guidelines:
         const response = await ai.chat.completions.create({
           model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: 'You are an automated SIT assistant. Output professional, exhaustive structured test scenarios in English.' },
+            { role: 'system', content: 'You are an automated Test Execution Report assistant. Output professional, exhaustive structured test scenarios in English.' },
             { role: 'user', content: userContent },
           ],
           response_format: {

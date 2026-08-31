@@ -2,16 +2,16 @@
 
 ## 1. Ringkasan Produk
 
-AI SIT Assistant adalah aplikasi web internal untuk membantu QA engineer atau SIT tester menyusun rancangan skenario dan test case System Integration Testing dari nama modul, requirement, business rules, pilihan coverage, dan screenshot UI opsional. Hasil AI dapat ditinjau, diedit, disimpan ke history browser, dan diekspor sebagai CSV yang kompatibel dengan spreadsheet.
+AI Test Execution Report Assistant adalah aplikasi web internal untuk membantu QA engineer atau tester menyusun rancangan skenario dan test case Test Execution Report dari nama modul, requirement, business rules, pilihan coverage, dan screenshot UI opsional. Hasil AI dapat ditinjau, diedit, disimpan ke history browser, dan diekspor sebagai CSV yang kompatibel dengan spreadsheet.
 
 ## 2. Problem Statement
 
-Penyusunan test case SIT secara manual membutuhkan waktu, rawan melewatkan variasi positive, negative, validation, atau boundary, dan menghasilkan format yang tidak konsisten. Aplikasi ini mempercepat pembuatan draft terstruktur, kemudian memberi QA kontrol untuk melakukan review dan koreksi sebelum hasil digunakan.
+Penyusunan test case Test Execution Report secara manual membutuhkan waktu, rawan melewatkan variasi positive, negative, validation, atau boundary, dan menghasilkan format yang tidak konsisten. Aplikasi ini mempercepat pembuatan draft terstruktur, kemudian memberi QA kontrol untuk melakukan review dan koreksi sebelum hasil digunakan.
 
 ## 3. Target User
 
-- QA engineer yang membuat cakupan SIT dari requirement dan aturan bisnis.
-- SIT tester yang memerlukan langkah eksekusi dan expected result dalam format konsisten.
+- QA engineer yang membuat cakupan Test Execution Report dari requirement dan aturan bisnis.
+- Tester yang memerlukan langkah eksekusi dan expected result dalam format konsisten.
 
 Tidak ada bukti di kode bahwa aplikasi telah mendukung akun, role-based access, kolaborasi, atau persetujuan formal.
 
@@ -48,7 +48,7 @@ Tidak ada bukti di kode bahwa aplikasi telah mendukung akun, role-based access, 
 
 ### A. Generate baru
 
-**User story:** Sebagai QA, saya ingin memasukkan spesifikasi dan coverage agar mendapatkan draft SIT.
+**User story:** Sebagai QA, saya ingin memasukkan spesifikasi dan coverage agar mendapatkan draft Test Execution Report.
 
 **Acceptance criteria:**
 
@@ -62,7 +62,7 @@ Tidak ada bukti di kode bahwa aplikasi telah mendukung akun, role-based access, 
 
 ### B. Review dan edit hasil
 
-**User story:** Sebagai SIT tester, saya ingin mengoreksi hasil agar sesuai kebutuhan eksekusi.
+**User story:** Sebagai tester, saya ingin mengoreksi hasil agar sesuai kebutuhan eksekusi.
 
 **Acceptance criteria:**
 
@@ -86,7 +86,7 @@ Tidak ada bukti di kode bahwa aplikasi telah mendukung akun, role-based access, 
 
 ### D. Export CSV
 
-**User story:** Sebagai SIT tester, saya ingin mengunduh test case scenario aktif untuk dipakai di spreadsheet.
+**User story:** Sebagai tester, saya ingin mengunduh test case scenario aktif untuk dipakai di spreadsheet.
 
 **Acceptance criteria:**
 

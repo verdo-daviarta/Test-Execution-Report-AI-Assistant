@@ -1,6 +1,6 @@
 {
-  "name": "AI SIT Assistant",
-  "description": "Automated system integration testing helper powered by AI, featuring visual screenshot understanding and test scenario generation.",
+  "name": "AI Test Execution Report Assistant",
+  "description": "Automated Test Execution Report helper powered by AI, featuring visual screenshot understanding and test scenario generation.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_OPENAI_API"]
 }

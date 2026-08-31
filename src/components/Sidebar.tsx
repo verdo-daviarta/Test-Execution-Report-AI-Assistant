@@ -14,12 +14,12 @@ export default function Sidebar({ activeTab, setActiveTab, userRole = "Verdo Dav
       {/* Brand Header */}
       <div className="p-6">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-sm shadow-blue-900">
+          <div className="w-15 h-9 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-sm shadow-blue-900">
             <Bot size={20} className="stroke-[2.5]" />
           </div>
           <div>
-            <h1 className="font-sans font-bold text-white text-base leading-none tracking-tight">AI SIT Assistant</h1>
-            <p className="font-sans text-[10px] text-slate-500 font-bold tracking-widest uppercase mt-1">Automated Testing</p>
+            <h1 className="font-sans font-bold text-white text-base leading-none tracking-tight">AI Test Execution Report Assistant</h1>
+            <p className="font-sans text-[10px] text-slate-500 font-bold tracking-widest uppercase mt-1">by : Daviarta</p>
           </div>
         </div>
       </div>

@@ -352,7 +352,7 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
           <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/80">
             <div>
               <h2 className="font-sans font-bold text-slate-900 text-base leading-snug">
-                {activeScenario?.name || 'SIT Scenarios'}
+                {activeScenario?.name || 'Test Execution Report Scenarios'}
               </h2>
               <p className="font-sans text-[11px] text-slate-500 mt-0.5">
                 {activeScenario?.description || 'Refine the generated test parameters below.'}

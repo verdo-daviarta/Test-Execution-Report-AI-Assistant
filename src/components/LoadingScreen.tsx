@@ -68,7 +68,7 @@ export default function LoadingScreen({ moduleName, hasScreenshot, onCancel }: L
           {/* Titles */}
           <div className="text-center mb-6">
             <h2 className="font-sans font-bold text-xl text-slate-900 mb-1">
-              Generating SIT Test Cases
+              Generating Test Execution Report
             </h2>
             <p className="text-xs text-slate-500 font-medium max-w-sm">
               Analyzing specification structure for <span className="text-blue-600 font-bold">"{moduleName}"</span> to design optimized system verification cases...

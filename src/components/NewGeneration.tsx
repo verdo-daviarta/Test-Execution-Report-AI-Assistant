@@ -125,7 +125,7 @@ export default function NewGeneration({ onGenerate }: NewGenerationProps) {
       {/* Page Header */}
       <div className="mb-10">
         <h1 className="font-sans font-bold text-3xl text-slate-900 leading-tight flex items-center gap-2">
-          Generate SIT Test Case
+          Generate Test Execution Report
         </h1>
         <p className="font-sans text-slate-500 text-sm mt-1">
           Upload screenshots and define requirements to generate structured test procedures effortlessly using advanced AI testing models.
@@ -341,7 +341,7 @@ export default function NewGeneration({ onGenerate }: NewGenerationProps) {
               
               <button
                 type="button"
-                onClick={() => alert(`SIT Export Guide:\n- Download Scenarios in CSV / Excel format using the Result Editor.\n- Share details with team developers directly.`)}
+                onClick={() => alert(`Test Execution Report Export Guide:\n- Download Scenarios in CSV / Excel format using the Result Editor.\n- Share details with team developers directly.`)}
                 className="p-4 bg-white border border-slate-200 rounded-xl hover:shadow-xs hover:border-blue-400 transition-all text-left flex flex-col gap-2 group cursor-pointer"
               >
                 <Layers size={16} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
