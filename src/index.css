@@ -22,3 +22,7 @@
   background: #6B7280;
 }
 
+/* Project card actions are grouped together in the card action bar. */
+.project-card > div.p-5 > button {
+  display: none;
+}

@@ -4,19 +4,23 @@ import NewGeneration from './components/NewGeneration';
 import LoadingScreen from './components/LoadingScreen';
 import ResultEditor from './components/ResultEditor';
 import HistoryList from './components/HistoryList';
-import { HistoryItem } from './types';
+import ProjectList from './components/ProjectList';
+import { HistoryItem, Project, Scenario } from './types';
 import {
   getHistoryFromApi,
   saveHistoryToApi,
   updateHistoryToApi,
   deleteHistoryFromApi,
+  getProjectsFromApi, createProjectToApi, updateProjectToApi, deleteProjectFromApi, saveScenarioToProjectApi, updateProjectScenarioApi, deleteProjectScenarioApi,
 } from './utils/api';
 import { createId } from './utils/id';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'new_generation' | 'history' | 'result_editor'>('new_generation');
+  const [activeTab, setActiveTab] = useState<'new_generation' | 'history' | 'project' | 'result_editor'>('new_generation');
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
+  const [projectContext, setProjectContext] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentGenerationParams, setCurrentGenerationParams] = useState<{
     moduleName: string;
@@ -25,6 +29,7 @@ export default function App() {
     businessRules: string;
     coverages: string[];
     screenshot: string | null;
+    projectId: string;
   } | null>(null);
   const [regeneratePending, setRegeneratePending] = useState(false);
   const generationAbortRef = useRef<AbortController | null>(null);
@@ -39,6 +44,8 @@ useEffect(() => {
     });
 }, []);
 
+  useEffect(() => { getProjectsFromApi().then(setProjects).catch(console.error); }, []);
+
   // Handle new generation request
   const handleGenerate = async (params: {
     moduleName: string;
@@ -47,7 +54,13 @@ useEffect(() => {
     businessRules: string;
     coverages: string[];
     screenshot: string | null;
+    projectId: string;
   }) => {
+    if (!params.projectId) {
+      alert('Pilih atau buat Project terlebih dahulu sebelum melakukan generate.');
+      setActiveTab('project');
+      return;
+    }
     generationAbortRef.current?.abort();
     const controller = new AbortController();
     generationAbortRef.current = controller;
@@ -113,6 +126,10 @@ useEffect(() => {
 
       // Persistence
       const savedItem = await saveHistoryToApi(newItem);
+      await Promise.all(scenarios.map((scenario: Scenario) => saveScenarioToProjectApi(params.projectId, savedItem.id, {
+        ...scenario,
+        testCases: (scenario.testCases || []).map((testCase) => ({ ...testCase, testerName: testCase.testerName || 'Verdo Daviarta' })),
+      })));
       const updatedHistory = await getHistoryFromApi();
 
       setHistoryItems(updatedHistory);
@@ -146,6 +163,7 @@ useEffect(() => {
           businessRules: selectedItem.businessRules || '',
           coverages: selectedItem.coverages || ['Positive', 'Negative'],
           screenshot: null,
+          projectId: projectContext || projects[0]?.id || '',
         });
     } else {
       alert('Active requirement details are missing. Start a new generation from form.');
@@ -155,6 +173,14 @@ useEffect(() => {
 
   // Selected item changes committed to database and state
 const handleSaveResult = async (updatedItem: HistoryItem) => {
+  if (projectContext) {
+    try {
+      await Promise.all(updatedItem.scenarios.map(scenario => updateProjectScenarioApi(projectContext, scenario)));
+      setProjects(await getProjectsFromApi());
+      setSelectedItem(updatedItem);
+    } catch (error) { console.error(error); alert('Perubahan scenario project gagal disimpan.'); }
+    return;
+  }
   const editedAt = new Date().toISOString();
 
   const revision = {
@@ -203,8 +229,35 @@ const handleDeleteHistory = async (id: string) => {
 
   // Navigating directly between tabs
   const handleSelectHistoryItem = (item: HistoryItem) => {
+    setProjectContext(null);
     setSelectedItem(item);
     setActiveTab('result_editor');
+  };
+
+  const handleCreateProject = async (name: string, description: string) => {
+    const project = await createProjectToApi(name, description);
+    setProjects(await getProjectsFromApi());
+    setActiveTab('project');
+    return project;
+  };
+  const handleOpenProjectScenario = (project: Project, scenario: Scenario & { sourceGenerationId?: string; moduleName?: string }) => {
+    const now = new Date().toISOString();
+    setProjectContext(project.id);
+    setSelectedItem({ id: `project-${project.id}`, date: now, createdAt: now, moduleName: scenario.moduleName || project.name, scenarioCount: 1, testCaseCount: scenario.testCases.length, status: 'COMPLETED', scenarios: [scenario], provider: 'openai' });
+    setActiveTab('result_editor');
+  };
+  const handleOpenProject = (project: Project) => {
+    const now = new Date().toISOString();
+    setProjectContext(project.id);
+    setSelectedItem({ id: `project-${project.id}`, date: now, createdAt: now, moduleName: project.name, scenarioCount: project.scenarios.length, testCaseCount: project.scenarios.reduce((total, scenario) => total + scenario.testCases.length, 0), status: 'COMPLETED', scenarios: project.scenarios, provider: 'openai' });
+    setActiveTab('result_editor');
+  };
+  const handleSaveToProject = async (scenarios: Scenario[], projectId: string) => {
+    let project = projects.find(item => item.id === projectId);
+    if (!project) { project = await handleCreateProject('My Project', ''); }
+    await Promise.all(scenarios.map(scenario => saveScenarioToProjectApi(project!.id, selectedItem?.id || '', scenario)));
+    setProjects(await getProjectsFromApi());
+    alert(`${scenarios.length} scenario disimpan ke project "${project.name}".`);
   };
 
   // Loading Screen cancellation
@@ -251,19 +304,23 @@ const handleDeleteHistory = async (id: string) => {
               onCancel={handleCancelGeneration}
             />
           ) : activeTab === 'new_generation' ? (
-            <NewGeneration onGenerate={handleGenerate} />
+            <NewGeneration onGenerate={handleGenerate} projects={projects} />
           ) : activeTab === 'history' ? (
             <HistoryList
               items={historyItems}
               onSelectItem={handleSelectHistoryItem}
               onDeleteItem={handleDeleteHistory}
             />
+          ) : activeTab === 'project' ? (
+            <ProjectList projects={projects} onCreate={handleCreateProject} onUpdate={async (project) => { await updateProjectToApi(project); setProjects(await getProjectsFromApi()); }} onDelete={async (id) => { await deleteProjectFromApi(id); setProjects(await getProjectsFromApi()); }} onRemoveScenario={async (projectId, scenarioId) => { await deleteProjectScenarioApi(projectId, scenarioId); setProjects(await getProjectsFromApi()); }} onOpenScenario={handleOpenProjectScenario} onOpenProject={handleOpenProject} />
           ) : activeTab === 'result_editor' ? (
             selectedItem ? (
               <ResultEditor
                 item={selectedItem}
                 onSave={handleSaveResult}
                 onRegenerate={handleRegenerate}
+                onSaveToProject={projectContext ? undefined : handleSaveToProject}
+                projects={projects}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">

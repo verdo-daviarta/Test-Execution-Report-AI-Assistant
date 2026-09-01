@@ -44,6 +44,51 @@ db.exec(`
     step TEXT NOT NULL,
     expected_result TEXT NOT NULL,
     sort_order INTEGER NOT NULL,
+    tester_name TEXT NOT NULL DEFAULT 'Verdo Daviarta',
+    testing_type TEXT NOT NULL DEFAULT 'Functional',
+    testing_status TEXT NOT NULL DEFAULT 'Not Started',
     FOREIGN KEY (scenario_id) REFERENCES scenarios(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS project_scenarios (
+    project_id TEXT NOT NULL,
+    scenario_id TEXT NOT NULL,
+    source_generation_id TEXT,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    sort_order INTEGER NOT NULL,
+    PRIMARY KEY (project_id, scenario_id),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS project_test_cases (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    scenario_id TEXT NOT NULL,
+    test_id TEXT NOT NULL,
+    scenario TEXT NOT NULL,
+    step TEXT NOT NULL,
+    expected_result TEXT NOT NULL,
+    sort_order INTEGER NOT NULL,
+    tester_name TEXT NOT NULL DEFAULT 'Verdo Daviarta',
+    testing_type TEXT NOT NULL DEFAULT 'Functional',
+    testing_status TEXT NOT NULL DEFAULT 'Not Started',
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+  );
 `);
+
+for (const column of [
+  "tester_name TEXT NOT NULL DEFAULT 'Verdo Daviarta'",
+  "testing_type TEXT NOT NULL DEFAULT 'Functional'",
+  "testing_status TEXT NOT NULL DEFAULT 'Not Started'",
+]) {
+  try { db.exec(`ALTER TABLE test_cases ADD COLUMN ${column}`); } catch { /* existing database already migrated */ }
+}

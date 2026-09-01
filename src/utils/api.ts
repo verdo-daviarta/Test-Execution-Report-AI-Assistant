@@ -1,4 +1,4 @@
-import { HistoryItem } from '../types';
+import { HistoryItem, Project, Scenario } from '../types';
 
 function apiHeaders(includeJson = false): HeadersInit {
   return {
@@ -56,4 +56,34 @@ export async function deleteHistoryFromApi(id: string): Promise<void> {
   if (!response.ok) {
     throw new Error('Failed to delete generation.');
   }
+}
+
+export async function getProjectsFromApi(): Promise<Project[]> {
+  return parseResponse<Project[]>(await fetch('/api/projects', { headers: apiHeaders() }));
+}
+
+export async function createProjectToApi(name: string, description = ''): Promise<Project> {
+  return parseResponse<Project>(await fetch('/api/projects', { method: 'POST', headers: apiHeaders(true), body: JSON.stringify({ name, description }) }));
+}
+
+export async function updateProjectToApi(project: Project): Promise<Project> {
+  return parseResponse<Project>(await fetch(`/api/projects/${project.id}`, { method: 'PUT', headers: apiHeaders(true), body: JSON.stringify({ name: project.name, description: project.description }) }));
+}
+
+export async function deleteProjectFromApi(id: string): Promise<void> {
+  const response = await fetch(`/api/projects/${id}`, { method: 'DELETE', headers: apiHeaders() });
+  if (!response.ok) throw new Error('Failed to delete project.');
+}
+
+export async function saveScenarioToProjectApi(projectId: string, generationId: string, scenario: Scenario): Promise<Project> {
+  return parseResponse<Project>(await fetch(`/api/projects/${projectId}/scenarios`, { method: 'POST', headers: apiHeaders(true), body: JSON.stringify({ generationId, scenario }) }));
+}
+
+export async function updateProjectScenarioApi(projectId: string, scenario: Scenario): Promise<Project> {
+  return parseResponse<Project>(await fetch(`/api/projects/${projectId}/scenarios/${scenario.id}`, { method: 'PUT', headers: apiHeaders(true), body: JSON.stringify({ scenario }) }));
+}
+
+export async function deleteProjectScenarioApi(projectId: string, scenarioId: string): Promise<void> {
+  const response = await fetch(`/api/projects/${projectId}/scenarios/${scenarioId}`, { method: 'DELETE', headers: apiHeaders() });
+  if (!response.ok) throw new Error('Failed to remove scenario from project.');
 }

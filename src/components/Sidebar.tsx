@@ -1,9 +1,9 @@
 import React from 'react';
-import { Bot, History, PlusCircle, Settings, HelpCircle, Briefcase } from 'lucide-react';
+import { Bot, FolderKanban, PlusCircle, Settings, HelpCircle } from 'lucide-react';
 
 interface SidebarProps {
-  activeTab: 'new_generation' | 'history' | 'result_editor';
-  setActiveTab: (tab: 'new_generation' | 'history' | 'result_editor') => void;
+  activeTab: 'new_generation' | 'history' | 'project' | 'result_editor';
+  setActiveTab: (tab: 'new_generation' | 'history' | 'project' | 'result_editor') => void;
   userRole?: string;
   plan?: string;
 }
@@ -39,17 +39,17 @@ export default function Sidebar({ activeTab, setActiveTab, userRole = "Verdo Dav
           <span>New Generation</span>
         </button>
 
-        {/* History */}
+        {/* Project */}
         <button
-          onClick={() => setActiveTab('history')}
+          onClick={() => setActiveTab('project')}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors text-left font-semibold cursor-pointer ${
-            activeTab === 'history'
+            activeTab === 'project'
               ? 'bg-slate-800 text-white shadow-sm'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
-          <History size={18} className={activeTab === 'history' ? 'text-blue-500' : 'opacity-80'} />
-          <span>History</span>
+          <FolderKanban size={18} className={activeTab === 'project' ? 'text-blue-500' : 'opacity-80'} />
+          <span>Project</span>
         </button>
       </nav>
 

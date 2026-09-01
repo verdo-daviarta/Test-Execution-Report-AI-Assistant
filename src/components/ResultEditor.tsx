@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Save, Download, Trash, Plus, Check, Filter, Sparkles } from 'lucide-react';
-import { HistoryItem, Scenario, TestCase } from '../types';
+import { HistoryItem, Project, Scenario, TestCase } from '../types';
 import { createId } from '../utils/id';
 
 interface ResultEditorProps {
   item: HistoryItem;
   onSave: (updatedItem: HistoryItem) => void;
   onRegenerate: () => void;
+  onSaveToProject?: (scenarios: Scenario[], projectId: string) => void;
+  projects?: Project[];
 }
 
-export default function ResultEditor({ item, onSave, onRegenerate }: ResultEditorProps) {
+export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProject, projects = [] }: ResultEditorProps) {
   const [scenarios, setScenarios] = useState<Scenario[]>(item.scenarios);
   const [activeScenarioId, setActiveScenarioId] = useState<string>(
     item.scenarios[0]?.id || ''
@@ -18,6 +20,7 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<string>('Just now');
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [targetProjectId, setTargetProjectId] = useState(projects[0]?.id || '');
 
   // Synchronize when the loaded item changes
   useEffect(() => {
@@ -26,6 +29,7 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
       setActiveScenarioId(item.scenarios[0].id);
     }
   }, [item]);
+  useEffect(() => { if (!targetProjectId && projects[0]) setTargetProjectId(projects[0].id); }, [projects, targetProjectId]);
 
   // Handle active scenario selections
   const activeScenario = scenarios.find((s) => s.id === activeScenarioId);
@@ -53,6 +57,8 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
     const now = new Date();
     setLastSaved(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
   };
+
+  const updateMetadata = (caseId: string, field: keyof TestCase, value: string) => handleTestCaseChange(caseId, field, value);
 
   // Change individual field values in a specific testcase
   const handleTestCaseChange = (
@@ -379,6 +385,14 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
                 <span>Save Changes</span>
               </button>
 
+              {onSaveToProject && scenarios.length > 0 && <>
+                {projects.length > 0 && <select value={targetProjectId} onChange={e => setTargetProjectId(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white"><option value="">Choose project</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select>}
+                <button
+                disabled={projects.length > 0 && !targetProjectId}
+                onClick={() => onSaveToProject(scenarios, targetProjectId)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm"
+              ><Plus size={13} /><span>Save All to Project</span></button></>}
+
               <button
                 onClick={handleExportCSV}
                 className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all shadow-sm shadow-blue-100 cursor-pointer"
@@ -399,6 +413,9 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
                   <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-1/4">Scenario Target</th>
                   <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-1/3">Execution Steps</th>
                   <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-1/3">Expected Outcome</th>
+                  <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nama Tester</th>
+                  <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Type Testing</th>
+                  <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status Testing</th>
                   <th className="px-6 py-3.5 w-12"></th>
                 </tr>
               </thead>
@@ -447,6 +464,11 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
                     </td>
 
                     {/* Remove row trash bin action */}
+                    <td className="px-3 py-4.5 align-top"><input value={tc.testerName || 'Verdo Daviarta'} onChange={e => updateMetadata(tc.id, 'testerName', e.target.value)} className="w-28 bg-transparent border border-slate-200 rounded px-2 py-1 text-xs" /></td>
+                    <td className="px-3 py-4.5 align-top"><select value={tc.testingType || 'Functional'} onChange={e => updateMetadata(tc.id, 'testingType', e.target.value)} className="w-28 border border-slate-200 rounded px-1 py-1 text-xs bg-white"><option>Functional</option><option>Integration</option><option>Regression</option><option>Performance</option><option>Security</option><option>Usability</option></select></td>
+                    <td className="px-3 py-4.5 align-top"><select value={tc.testingStatus || 'Not Started'} onChange={e => updateMetadata(tc.id, 'testingStatus', e.target.value)} className="w-28 border border-slate-200 rounded px-1 py-1 text-xs bg-white"><option>Not Started</option><option>In Progress</option><option>Passed</option><option>Failed</option><option>Blocked</option></select></td>
+
+                    {/* Remove row trash bin action */}
                     <td className="px-6 py-4.5 align-middle text-center shrink-0">
                       <button
                         onClick={() => deleteTestCaseRow(tc.id)}
@@ -462,7 +484,7 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
 
                 {(!activeScenario || activeScenario.testCases.length === 0) && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-xs text-slate-400 font-semibold font-sans">
+                    <td colSpan={8} className="px-6 py-12 text-center text-xs text-slate-400 font-semibold font-sans">
                       No test case rows currently present. Add a new row below.
                     </td>
                   </tr>

@@ -4,6 +4,18 @@ export interface TestCase {
   scenario: string;
   step: string;
   expectedResult: string;
+  testerName?: string;
+  testingType?: 'Functional' | 'Integration' | 'Regression' | 'Performance' | 'Security' | 'Usability';
+  testingStatus?: 'Not Started' | 'In Progress' | 'Passed' | 'Failed' | 'Blocked';
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  scenarios: Array<Scenario & { sourceGenerationId?: string; moduleName?: string }>;
 }
 
 export interface Scenario {

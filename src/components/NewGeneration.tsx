@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { Upload, HelpCircle, Lightbulb, Sparkles, Check, Image as ImageIcon, Trash2, BookOpen, Layers } from 'lucide-react';
+import { Upload, HelpCircle, Lightbulb, Sparkles, Check, Image as ImageIcon, Trash2, BookOpen, Layers, ChevronDown } from 'lucide-react';
+import { Project } from '../types';
 
 interface NewGenerationProps {
   onGenerate: (data: {
@@ -9,16 +10,19 @@ interface NewGenerationProps {
     businessRules: string;
     coverages: string[];
     screenshot: string | null;
+    projectId: string;
   }) => void;
+  projects: Project[];
 }
 
-export default function NewGeneration({ onGenerate }: NewGenerationProps) {
+export default function NewGeneration({ onGenerate, projects }: NewGenerationProps) {
   const [moduleName, setModuleName] = useState('');
   const [provider, setProvider] = useState<'openai' | 'gemini'>('openai');
   const [requirement, setRequirement] = useState('');
   const [businessRules, setBusinessRules] = useState('');
   const [coverages, setCoverages] = useState<string[]>(['Positive', 'Negative']);
   const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
   
@@ -109,6 +113,10 @@ export default function NewGeneration({ onGenerate }: NewGenerationProps) {
       setErrorStatus('Please fulfill the Module Name field.');
       return;
     }
+    if (!projectId) {
+      setErrorStatus(projects.length ? 'Please choose a project before generating test scenarios.' : 'Create a project first from the Project menu before generating test scenarios.');
+      return;
+    }
     setErrorStatus(null);
     onGenerate({
       moduleName,
@@ -117,6 +125,7 @@ export default function NewGeneration({ onGenerate }: NewGenerationProps) {
       businessRules,
       coverages,
       screenshot,
+      projectId,
     });
   };
 
@@ -156,18 +165,34 @@ export default function NewGeneration({ onGenerate }: NewGenerationProps) {
               />
             </div>
 
+            {/* Mandatory Project */}
+            <div className="space-y-1.5">
+              <label htmlFor="target-project" className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Project <span className="text-red-500">*</span></label>
+              <div className="relative">
+              <select id="target-project" value={projectId} onChange={(e) => setProjectId(e.target.value)} className="w-full appearance-none px-4 pr-12 py-3 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-800 text-sm font-medium bg-slate-50/30" required>
+                <option value="">{projects.length ? 'Choose a project' : 'No project available'}</option>
+                {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+              </select>
+              <ChevronDown size={17} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+              </div>
+              <p className="text-[11px] text-slate-400">Project wajib dipilih sebelum test scenario dibuat.</p>
+            </div>
+
             {/* AI Provider */}
             <div className="space-y-1.5">
               <label htmlFor="ai-provider" className="block text-xs font-bold text-slate-500 uppercase tracking-widest">AI Provider</label>
+              <div className="relative">
               <select
                 id="ai-provider"
                 value={provider}
                 onChange={(e) => setProvider(e.target.value as 'openai' | 'gemini')}
-                className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-800 text-sm font-medium bg-slate-50/30"
+                className="w-full appearance-none px-4 pr-12 py-3 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-800 text-sm font-medium bg-slate-50/30" required
               >
                 <option value="openai">OpenAI</option>
                 <option value="gemini">Google Gemini</option>
               </select>
+              <ChevronDown size={17} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+              </div>
               <p className="text-[11px] text-slate-400">Pilih provider yang memiliki kuota/API key aktif.</p>
             </div>
 
@@ -218,7 +243,7 @@ export default function NewGeneration({ onGenerate }: NewGenerationProps) {
                             : 'border-slate-300 bg-white'
                         }`}
                       >
-                        {isChecked && <Check size={12} className="stroke-[3]" />}
+                        {isChecked && <Check size={12} className="stroke-3" />}
                       </div>
                       <span className="text-xs">{item}</span>
                     </label>
@@ -250,7 +275,7 @@ export default function NewGeneration({ onGenerate }: NewGenerationProps) {
             onDragLeave={handleDrag}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`cursor-pointer group relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all duration-300 min-h-[300px] ${
+            className={`cursor-pointer group relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all duration-300 min-h-300px ${
               dragActive
                 ? 'border-blue-500 bg-blue-50/40'
                 : screenshot
@@ -267,7 +292,7 @@ export default function NewGeneration({ onGenerate }: NewGenerationProps) {
             />
             {screenshot ? (
               <div className="space-y-4 w-full">
-                <div className="relative mx-auto max-w-[200px] max-h-[160px] rounded-lg overflow-hidden border border-slate-200 shadow-sm">
+                <div className="relative mx-auto max-w-200px max-h-160px rounded-lg overflow-hidden border border-slate-200 shadow-sm">
                   <img src={screenshot} alt="Visual Screenshot Upload" className="w-full h-full object-contain" />
                   <button
                     onClick={removeScreenshot}
