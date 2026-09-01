@@ -1,4 +1,4 @@
-# Kajian dan Rekomendasi Perbaikan — AI SIT Assistant
+# Kajian dan Rekomendasi Perbaikan — Test Execution Report (TER)
 
 Dokumen ini disusun berdasarkan tinjauan langsung terhadap source code (server.ts, src/App.tsx, komponen React, dan utils/storage.ts). Setiap poin ditandai tingkat urgensinya.
 

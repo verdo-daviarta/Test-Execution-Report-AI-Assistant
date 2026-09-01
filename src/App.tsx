@@ -5,7 +5,12 @@ import LoadingScreen from './components/LoadingScreen';
 import ResultEditor from './components/ResultEditor';
 import HistoryList from './components/HistoryList';
 import { HistoryItem } from './types';
-import { getHistory, addHistoryItem, updateHistoryItem, deleteHistoryItem } from './utils/storage';
+import {
+  getHistoryFromApi,
+  saveHistoryToApi,
+  updateHistoryToApi,
+  deleteHistoryFromApi,
+} from './utils/api';
 import { createId } from './utils/id';
 
 export default function App() {
@@ -24,10 +29,15 @@ export default function App() {
   const [regeneratePending, setRegeneratePending] = useState(false);
   const generationAbortRef = useRef<AbortController | null>(null);
 
-  // Initialize history items from storage
-  useEffect(() => {
-    setHistoryItems(getHistory());
-  }, []);
+  // Initialize history items from database API
+useEffect(() => {
+  getHistoryFromApi()
+    .then(setHistoryItems)
+    .catch((error) => {
+      console.error(error);
+      alert('History gagal dimuat dari database.');
+    });
+}, []);
 
   // Handle new generation request
   const handleGenerate = async (params: {
@@ -102,10 +112,11 @@ export default function App() {
       };
 
       // Persistence
-      addHistoryItem(newItem);
-      const updatedHistory = getHistory();
+      const savedItem = await saveHistoryToApi(newItem);
+      const updatedHistory = await getHistoryFromApi();
+
       setHistoryItems(updatedHistory);
-      setSelectedItem(newItem);
+      setSelectedItem(savedItem);
       setIsGenerating(false);
       setActiveTab('result_editor');
 
@@ -142,29 +153,53 @@ export default function App() {
     }
   };
 
-  // Selected item table modifications committed to localStorage and state
-  const handleSaveResult = (updatedItem: HistoryItem) => {
-    const editedAt = new Date().toISOString();
-    const revision = { editedAt, scenarios: selectedItem?.scenarios || updatedItem.scenarios };
-    const withMetadata: HistoryItem = {
-      ...updatedItem,
-      lastEditedAt: editedAt,
-      revisionHistory: [...(updatedItem.revisionHistory || []), revision].slice(-10),
-    };
-    updateHistoryItem(withMetadata);
-    setHistoryItems(getHistory());
-    setSelectedItem(withMetadata);
+  // Selected item changes committed to database and state
+const handleSaveResult = async (updatedItem: HistoryItem) => {
+  const editedAt = new Date().toISOString();
+
+  const revision = {
+    editedAt,
+    scenarios: selectedItem?.scenarios || updatedItem.scenarios,
   };
 
+  const withMetadata: HistoryItem = {
+    ...updatedItem,
+    lastEditedAt: editedAt,
+    revisionHistory: [
+      ...(updatedItem.revisionHistory || []),
+      revision,
+    ].slice(-10),
+  };
+
+  try {
+    const savedItem = await updateHistoryToApi(withMetadata);
+    const updatedHistory = await getHistoryFromApi();
+
+    setHistoryItems(updatedHistory);
+    setSelectedItem(savedItem);
+  } catch (error) {
+    console.error(error);
+    alert('Perubahan gagal disimpan ke database.');
+  }
+};
+
   // Remove history key from storage
-  const handleDeleteHistory = (id: string) => {
-    deleteHistoryItem(id);
-    setHistoryItems(getHistory());
+const handleDeleteHistory = async (id: string) => {
+  try {
+    await deleteHistoryFromApi(id);
+
+    const updatedHistory = await getHistoryFromApi();
+    setHistoryItems(updatedHistory);
+
     if (selectedItem?.id === id) {
       setSelectedItem(null);
       setActiveTab('new_generation');
     }
-  };
+  } catch (error) {
+    console.error(error);
+    alert('History gagal dihapus.');
+  }
+};
 
   // Navigating directly between tabs
   const handleSelectHistoryItem = (item: HistoryItem) => {
@@ -251,7 +286,7 @@ export default function App() {
 
       </main>
       {regeneratePending && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/40 flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-labelledby="regenerate-title">
+        <div className="fixed inset-0 z-100 bg-slate-900/40 flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-labelledby="regenerate-title">
           <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-xl p-6">
             <h2 id="regenerate-title" className="text-lg font-bold text-slate-900">Regenerate test cases?</h2>
             <p className="mt-2 text-sm text-slate-500">Manual changes in this editor will be discarded and a new generation will be created.</p>

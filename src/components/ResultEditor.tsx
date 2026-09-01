@@ -301,7 +301,7 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
                           {sc.testCases.length} TCs
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-1.5 truncate max-w-[220px]">
+                      <p className="text-[11px] text-slate-500 mt-1.5 truncate max-w-220px">
                         {sc.description}
                       </p>
                     </button>
@@ -318,7 +318,7 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
                         className="absolute right-4 bottom-3.5 opacity-0 group-hover/sc:opacity-100 p-1.5 bg-white hover:bg-red-50 text-red-600 rounded-md border border-slate-200 shadow-sm transition-opacity z-10 cursor-pointer"
                         title="Delete scenario"
                       >
-                        <Trash size={12} className="stroke-[2]" />
+                        <Trash size={12} className="stroke-2" />
                       </button>
                     )}
                   </li>
@@ -366,7 +366,7 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
                 className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all bg-white cursor-pointer shadow-sm"
                 title="Regenerate all scenario cases"
               >
-                <RefreshCw size={13} className="stroke-[2]" />
+                <RefreshCw size={13} className="stroke-2" />
                 <span>Regenerate</span>
               </button>
 
@@ -375,7 +375,7 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
                 className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all bg-white cursor-pointer shadow-sm"
                 title="Commit state changes to browser workspace cache"
               >
-                <Save size={13} className="stroke-[2]" />
+                <Save size={13} className="stroke-2" />
                 <span>Save Changes</span>
               </button>
 
@@ -432,7 +432,7 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
                         value={tc.step}
                         onChange={(e) => handleTestCaseChange(tc.id, 'step', e.target.value)}
                         rows={Math.max(3, tc.step.split('\n').length)}
-                        className="w-full bg-transparent border-none p-1 text-xs text-slate-800 leading-relaxed focus:bg-slate-50 focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-medium text-slate-600"
+                        className="w-full bg-transparent border-none p-1 text-xs text-slate-600 leading-relaxed focus:bg-slate-50 focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-medium"
                       />
                     </td>
 
@@ -453,7 +453,7 @@ export default function ResultEditor({ item, onSave, onRegenerate }: ResultEdito
                         className="opacity-0 group-hover/tr:opacity-100 p-2 hover:bg-red-50 text-red-600 rounded-lg transition-all cursor-pointer inline-block"
                         title="Delete test row"
                       >
-                        <Trash size={14} className="stroke-[2]" />
+                        <Trash size={14} className="stroke-2" />
                       </button>
                     </td>
 

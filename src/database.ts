@@ -1,0 +1,49 @@
+import Database from 'better-sqlite3';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const dataDirectory = path.join(process.cwd(), 'data');
+
+if (!fs.existsSync(dataDirectory)) {
+  fs.mkdirSync(dataDirectory, { recursive: true });
+}
+
+const databasePath = path.join(dataDirectory, 'test-execution-report.db');
+
+export const db = new Database(databasePath);
+
+db.pragma('journal_mode = WAL');
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS generations (
+    id TEXT PRIMARY KEY,
+    module_name TEXT NOT NULL,
+    requirement TEXT,
+    business_rules TEXT,
+    provider TEXT NOT NULL,
+    status TEXT NOT NULL,
+    is_mock INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS scenarios (
+    id TEXT PRIMARY KEY,
+    generation_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    sort_order INTEGER NOT NULL,
+    FOREIGN KEY (generation_id) REFERENCES generations(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS test_cases (
+    id TEXT PRIMARY KEY,
+    scenario_id TEXT NOT NULL,
+    test_id TEXT NOT NULL,
+    scenario TEXT NOT NULL,
+    step TEXT NOT NULL,
+    expected_result TEXT NOT NULL,
+    sort_order INTEGER NOT NULL,
+    FOREIGN KEY (scenario_id) REFERENCES scenarios(id) ON DELETE CASCADE
+  );
+`);
