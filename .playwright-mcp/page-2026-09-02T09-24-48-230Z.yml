@@ -1,0 +1,216 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e11]:
+      - heading "AI Test Execution Report Assistant" [level=1] [ref=e12]
+      - paragraph [ref=e13]: "by : Daviarta"
+    - navigation [ref=e14]:
+      - button "New Generation" [ref=e15] [cursor=pointer]
+      - button "Project" [ref=e19] [cursor=pointer]
+    - generic [ref=e23]:
+      - button "Settings" [ref=e24] [cursor=pointer]
+      - button "Support" [ref=e29] [cursor=pointer]
+      - generic [ref=e34]:
+        - generic [ref=e35]: Ve
+        - generic [ref=e36]:
+          - paragraph [ref=e37]: Verdo Daviarta
+          - paragraph [ref=e38]: Team Leader
+  - main [ref=e39]:
+    - generic [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e42]: WORKSPACE
+        - generic [ref=e43]: /
+        - generic [ref=e44]: result editor
+      - generic [ref=e45]:
+        - generic [ref=e46]: "Region: Southeast Asia (Singapore)"
+        - generic [ref=e48]: "Local Server: ACTIVE (Port 3000)"
+    - generic [ref=e739]:
+      - generic [ref=e740]:
+        - complementary [ref=e741]:
+          - generic [ref=e742]:
+            - heading "Generated Scenarios" [level=2] [ref=e743]
+            - textbox "Filter scenarios..." [ref=e747]
+          - list [ref=e749]:
+            - listitem [ref=e750]:
+              - button "Konferensi Kelas 6 SC · 12 TC" [ref=e751]:
+                - generic [ref=e758]: Konferensi Kelas
+                - generic [ref=e759]: 6 SC · 12 TC
+              - list [ref=e760]:
+                - listitem [ref=e761]:
+                  - button "UI Verification of Login Page 2 TCs Verify the visual layout, branding elements, labels, and placeholders on the Sistem Konferensi Kelas login page." [ref=e762] [cursor=pointer]:
+                    - generic [ref=e763]:
+                      - generic [ref=e764]: UI Verification of Login Page
+                      - generic [ref=e765]: 2 TCs
+                    - paragraph [ref=e766]: Verify the visual layout, branding elements, labels, and placeholders on the Sistem Konferensi Kelas login page.
+                  - button "Delete scenario" [ref=e767] [cursor=pointer]
+                - listitem [ref=e771]:
+                  - button "Successful Login Functionality 2 TCs Verify that users can successfully log into the application using valid alphanumeric credentials." [ref=e772] [cursor=pointer]:
+                    - generic [ref=e773]:
+                      - generic [ref=e774]: Successful Login Functionality
+                      - generic [ref=e775]: 2 TCs
+                    - paragraph [ref=e776]: Verify that users can successfully log into the application using valid alphanumeric credentials.
+                  - button "Delete scenario" [ref=e777] [cursor=pointer]
+                - listitem [ref=e781]:
+                  - button "Input Validation for Alphanumeric Credentials 2 TCs Verify that username and password fields accept valid alphanumeric inputs as per business rules." [ref=e782] [cursor=pointer]:
+                    - generic [ref=e783]:
+                      - generic [ref=e784]: Input Validation for Alphanumeric Credentials
+                      - generic [ref=e785]: 2 TCs
+                    - paragraph [ref=e786]: Verify that username and password fields accept valid alphanumeric inputs as per business rules.
+                  - button "Delete scenario" [ref=e787] [cursor=pointer]
+                - listitem [ref=e791]:
+                  - button "Checkout Order Processing and Shipping Calculation 2 TCs Verify successful checkout flow and correct standard shipping calculations based on order total thresholds." [ref=e792] [cursor=pointer]:
+                    - generic [ref=e793]:
+                      - generic [ref=e794]: Checkout Order Processing and Shipping Calculation
+                      - generic [ref=e795]: 2 TCs
+                    - paragraph [ref=e796]: Verify successful checkout flow and correct standard shipping calculations based on order total thresholds.
+                  - button "Delete scenario" [ref=e797] [cursor=pointer]
+                - listitem [ref=e801]:
+                  - button "Stripe Payment Gateway Integration and Webhook Verification 2 TCs Validate successful payment authorization through Stripe API and secure webhook execution." [ref=e802] [cursor=pointer]:
+                    - generic [ref=e803]:
+                      - generic [ref=e804]: Stripe Payment Gateway Integration and Webhook Verification
+                      - generic [ref=e805]: 2 TCs
+                    - paragraph [ref=e806]: Validate successful payment authorization through Stripe API and secure webhook execution.
+                  - button "Delete scenario" [ref=e807] [cursor=pointer]
+                - listitem [ref=e811]:
+                  - button "Invoice Dispatch and API Performance Limits 2 TCs Ensure post-payment notification workflows and connection timeout SLAs are met." [ref=e812] [cursor=pointer]:
+                    - generic [ref=e813]:
+                      - generic [ref=e814]: Invoice Dispatch and API Performance Limits
+                      - generic [ref=e815]: 2 TCs
+                    - paragraph [ref=e816]: Ensure post-payment notification workflows and connection timeout SLAs are met.
+                  - button "Delete scenario" [ref=e817] [cursor=pointer]
+            - listitem [ref=e821]:
+              - button "Checkout API Payment Gateway 6 SC · 12 TC" [ref=e822]:
+                - generic [ref=e829]: Checkout API Payment Gateway
+                - generic [ref=e830]: 6 SC · 12 TC
+              - list [ref=e831]:
+                - listitem [ref=e832]:
+                  - button "End-to-End Checkout & Gateway Performance 2 TCs Verify successful end-to-end checkout execution using valid Stripe credentials and ensuring system connection latency remains within acceptable business thresholds." [ref=e833] [cursor=pointer]:
+                    - generic [ref=e834]:
+                      - generic [ref=e835]: End-to-End Checkout & Gateway Performance
+                      - generic [ref=e836]: 2 TCs
+                    - paragraph [ref=e837]: Verify successful end-to-end checkout execution using valid Stripe credentials and ensuring system connection latency remains within acceptable business thresholds.
+                  - button "Delete scenario" [ref=e838] [cursor=pointer]
+                - listitem [ref=e842]:
+                  - button "Shipping Rule Validation 2 TCs Validate business logic rules regarding standard shipping fees based on order cart threshold amounts." [ref=e843] [cursor=pointer]:
+                    - generic [ref=e844]:
+                      - generic [ref=e845]: Shipping Rule Validation
+                      - generic [ref=e846]: 2 TCs
+                    - paragraph [ref=e847]: Validate business logic rules regarding standard shipping fees based on order cart threshold amounts.
+                  - button "Delete scenario" [ref=e848] [cursor=pointer]
+                - listitem [ref=e852]:
+                  - button "Webhook Processing & Invoice Delivery 2 TCs Ensure post-payment webhook event handling correctly updates order status and triggers customer invoice emails." [ref=e853] [cursor=pointer]:
+                    - generic [ref=e854]:
+                      - generic [ref=e855]: Webhook Processing & Invoice Delivery
+                      - generic [ref=e856]: 2 TCs
+                    - paragraph [ref=e857]: Ensure post-payment webhook event handling correctly updates order status and triggers customer invoice emails.
+                  - button "Delete scenario" [ref=e858] [cursor=pointer]
+                - listitem [ref=e862]:
+                  - button "Checkout Order Processing and Shipping Calculation 2 TCs Verify successful checkout flow and correct standard shipping calculations based on order total thresholds." [ref=e863] [cursor=pointer]:
+                    - generic [ref=e864]:
+                      - generic [ref=e865]: Checkout Order Processing and Shipping Calculation
+                      - generic [ref=e866]: 2 TCs
+                    - paragraph [ref=e867]: Verify successful checkout flow and correct standard shipping calculations based on order total thresholds.
+                  - button "Delete scenario" [ref=e868] [cursor=pointer]
+                - listitem [ref=e872]:
+                  - button "Stripe Payment Gateway Integration and Webhook Verification 2 TCs Validate successful payment authorization through Stripe API and secure webhook execution." [ref=e873] [cursor=pointer]:
+                    - generic [ref=e874]:
+                      - generic [ref=e875]: Stripe Payment Gateway Integration and Webhook Verification
+                      - generic [ref=e876]: 2 TCs
+                    - paragraph [ref=e877]: Validate successful payment authorization through Stripe API and secure webhook execution.
+                  - button "Delete scenario" [ref=e878] [cursor=pointer]
+                - listitem [ref=e882]:
+                  - button "Invoice Dispatch and API Performance Limits 2 TCs Ensure post-payment notification workflows and connection timeout SLAs are met." [ref=e883] [cursor=pointer]:
+                    - generic [ref=e884]:
+                      - generic [ref=e885]: Invoice Dispatch and API Performance Limits
+                      - generic [ref=e886]: 2 TCs
+                    - paragraph [ref=e887]: Ensure post-payment notification workflows and connection timeout SLAs are met.
+                  - button "Delete scenario" [ref=e888] [cursor=pointer]
+          - button "Add Scenario" [ref=e893] [cursor=pointer]
+        - generic [ref=e896]:
+          - generic [ref=e897]:
+            - generic [ref=e898]:
+              - generic [ref=e899]:
+                - generic [ref=e900]: Module Name
+                - generic [ref=e901]: Konferensi Kelas
+              - heading "UI Verification of Login Page" [level=2] [ref=e902]
+              - paragraph [ref=e903]: Verify the visual layout, branding elements, labels, and placeholders on the Sistem Konferensi Kelas login page.
+            - generic [ref=e904]:
+              - button "Regenerate" [ref=e905] [cursor=pointer]
+              - button "Save Changes" [ref=e912] [cursor=pointer]
+              - button "Export Excel" [ref=e918] [cursor=pointer]
+          - generic [ref=e923]:
+            - table [ref=e924]:
+              - rowgroup [ref=e925]:
+                - row [ref=e926]:
+                  - columnheader "Test ID" [ref=e927]
+                  - columnheader "Scenario Target" [ref=e928]
+                  - columnheader "Execution Steps" [ref=e929]
+                  - columnheader "Expected Outcome" [ref=e930]
+                  - columnheader "Nama Tester" [ref=e931]
+                  - columnheader "Type Testing" [ref=e932]
+                  - columnheader "Status Testing" [ref=e933]
+                  - columnheader [ref=e934]
+              - rowgroup [ref=e935]:
+                - row [ref=e936]:
+                  - cell [ref=e937]:
+                    - textbox [ref=e938]: TC-001
+                  - cell [ref=e939]:
+                    - textbox [ref=e940]: Verify Login Page Layout and Branding Elements
+                  - cell [ref=e941]:
+                    - textbox [ref=e942]: 1. Open the application URL in a web browser. 2. Observe the main background, Ministry logo, sub-logos, and header text 'SISTEM KONFERENSI KELAS'. 3. Verify presence of Username field, Password field, and Sign In button.
+                  - cell [ref=e943]:
+                    - textbox [ref=e944]: The login page loads successfully displaying the 'SISTEM KONFERENSI KELAS' header, logo, Username input field, Password input field, and 'Sign In' button.
+                  - cell [ref=e945]:
+                    - textbox [ref=e946]: Verdo Daviarta
+                  - cell "Usability" [ref=e947]:
+                    - combobox [ref=e948]:
+                      - option "Functional"
+                      - option "Integration"
+                      - option "Regression"
+                      - option "Performance"
+                      - option "Security"
+                      - option "Usability" [selected]
+                  - cell "Not Started" [ref=e949]:
+                    - combobox [ref=e950]:
+                      - option "Not Started" [selected]
+                      - option "In Progress"
+                      - option "Passed"
+                      - option "Failed"
+                      - option "Blocked"
+                  - cell [ref=e951]:
+                    - button "Delete test row" [ref=e952] [cursor=pointer]
+                - row [ref=e956]:
+                  - cell [ref=e957]:
+                    - textbox [ref=e958]: TC-002
+                  - cell [ref=e959]:
+                    - textbox [ref=e960]: Verify Input Fields Placeholders and Labels
+                  - cell [ref=e961]:
+                    - textbox [ref=e962]: 1. Navigate to the Login Page. 2. Check the label and placeholder text for the Username field. 3. Check the label and placeholder text for the Password field.
+                  - cell [ref=e963]:
+                    - textbox [ref=e964]: Username field displays label 'Username' with placeholder 'Username'. Password field displays label 'Password' with placeholder 'Password'.
+                  - cell [ref=e965]:
+                    - textbox [ref=e966]: Verdo Daviarta
+                  - cell "Functional" [ref=e967]:
+                    - combobox [ref=e968]:
+                      - option "Functional" [selected]
+                      - option "Integration"
+                      - option "Regression"
+                      - option "Performance"
+                      - option "Security"
+                      - option "Usability"
+                  - cell "Not Started" [ref=e969]:
+                    - combobox [ref=e970]:
+                      - option "Not Started" [selected]
+                      - option "In Progress"
+                      - option "Passed"
+                      - option "Failed"
+                      - option "Blocked"
+                  - cell [ref=e971]:
+                    - button "Delete test row" [ref=e972] [cursor=pointer]
+            - button "Add New Test Case Row" [ref=e977] [cursor=pointer]
+          - generic [ref=e980]:
+            - generic [ref=e981]:
+              - generic [ref=e982]: "Total Test Cases: 24"
+              - generic [ref=e984]: "Selection: 2 rows"
+              - generic [ref=e986]: AI Sync Active
+            - generic [ref=e989]: "Last saved: Just now"
+      - button "Optimize scenarios via AI" [ref=e991] [cursor=pointer]

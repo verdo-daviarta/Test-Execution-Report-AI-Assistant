@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Filter, Trash2, Eye, RefreshCw, BarChart2, CheckCircle2, HardDrive, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import { HistoryItem } from '../types';
+import ConfirmDialog from './ConfirmDialog';
 
 interface HistoryListProps {
   items: HistoryItem[];
@@ -14,6 +15,7 @@ export default function HistoryList({ items, onSelectItem, onDeleteItem }: Histo
   const [sortAsc, setSortAsc] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'ALL' | HistoryItem['status']>('ALL');
   const [notification, setNotification] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; moduleName: string } | null>(null);
 
   const itemsPerPage = 5;
 
@@ -42,7 +44,12 @@ export default function HistoryList({ items, onSelectItem, onDeleteItem }: Histo
   const currentItems = sortedItems.slice(indexOfFirstItem, indexOfLastItem);
 
   const handleDelete = (id: string, moduleName: string) => {
-    if (confirm(`Confirm permanent removal of "${moduleName}" and all associated test scenarios?`)) {
+    setPendingDelete({ id, moduleName });
+  };
+
+  const executeDelete = () => {
+    if (pendingDelete) {
+      const { id, moduleName } = pendingDelete;
       onDeleteItem(id);
       setNotification(`Successfully cleared "${moduleName}" from history.`);
       setTimeout(() => setNotification(null), 3000);
@@ -51,6 +58,7 @@ export default function HistoryList({ items, onSelectItem, onDeleteItem }: Histo
         setCurrentPage((p) => p - 1);
       }
     }
+    setPendingDelete(null);
   };
 
   // Metrics derived from actual local history.
@@ -72,6 +80,7 @@ export default function HistoryList({ items, onSelectItem, onDeleteItem }: Histo
           <span>{notification}</span>
         </div>
       )}
+      {pendingDelete && <ConfirmDialog title="Delete generation history?" message={`"${pendingDelete.moduleName}" and all associated test scenarios will be permanently removed.`} onCancel={() => setPendingDelete(null)} onConfirm={executeDelete} />}
 
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">

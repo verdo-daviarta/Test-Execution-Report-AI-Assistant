@@ -1,0 +1,89 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e11]:
+      - heading "AI Test Execution Report Assistant" [level=1] [ref=f1e12]
+      - paragraph [ref=f1e13]: "by : Daviarta"
+    - navigation [ref=f1e14]:
+      - button "New Generation" [ref=f1e15] [cursor=pointer]
+      - button "Project" [ref=f1e19] [cursor=pointer]
+    - generic [ref=f1e23]:
+      - button "Settings" [ref=f1e24] [cursor=pointer]
+      - button "Support" [ref=f1e29] [cursor=pointer]
+      - generic [ref=f1e34]:
+        - generic [ref=f1e35]: Ve
+        - generic [ref=f1e36]:
+          - paragraph [ref=f1e37]: Verdo Daviarta
+          - paragraph [ref=f1e38]: Team Leader
+  - main [ref=f1e39]:
+    - generic [ref=f1e40]:
+      - generic [ref=f1e41]:
+        - generic [ref=f1e42]: WORKSPACE
+        - generic [ref=f1e43]: /
+        - generic [ref=f1e44]: new generation
+      - generic [ref=f1e45]:
+        - generic [ref=f1e46]: "Region: Southeast Asia (Singapore)"
+        - generic [ref=f1e48]: "Local Server: ACTIVE (Port 3000)"
+    - generic [ref=f1e50]:
+      - generic [ref=f1e51]:
+        - heading "Generate Test Execution Report" [level=1] [ref=f1e52]
+        - paragraph [ref=f1e53]: Upload screenshots and define requirements to generate structured test procedures effortlessly using advanced AI testing models.
+      - generic [ref=f1e54]:
+        - generic [ref=f1e55]:
+          - generic [ref=f1e56]:
+            - generic [ref=f1e57]:
+              - generic [ref=f1e58]: Module Name
+              - textbox "e.g. User Authentication, Payment Gateway" [ref=f1e59]
+            - generic [ref=f1e60]:
+              - generic [ref=f1e61]: Project *
+              - combobox "Project *" [ref=f1e63]:
+                - option "No project available" [selected]
+              - paragraph [ref=f1e64]: Project wajib dipilih sebelum test scenario dibuat.
+            - generic [ref=f1e65]:
+              - generic [ref=f1e66]: AI Provider
+              - combobox "AI Provider" [ref=f1e68]:
+                - option "OpenAI" [selected]
+                - option "Google Gemini"
+              - paragraph [ref=f1e69]: Pilih provider yang memiliki kuota/API key aktif.
+            - generic [ref=f1e70]:
+              - generic [ref=f1e71]: Requirement
+              - textbox "Paste the functional specifications, requirements or user stories here..." [ref=f1e72]
+            - generic [ref=f1e73]:
+              - generic [ref=f1e74]: Business Rules
+              - textbox "Specific constraints, error codes, limits or validation logic..." [ref=f1e75]
+            - generic [ref=f1e76]:
+              - generic [ref=f1e77]: Coverage Selection
+              - generic [ref=f1e78]:
+                - generic [ref=f1e79] [cursor=pointer]: Positive
+                - generic [ref=f1e84] [cursor=pointer]: Negative
+                - generic [ref=f1e89] [cursor=pointer]: Validation
+                - generic [ref=f1e92] [cursor=pointer]: Boundary
+          - button "Generate Test Scenarios" [ref=f1e96] [cursor=pointer]
+        - generic [ref=f1e101]:
+          - generic [ref=f1e102] [cursor=pointer]:
+            - heading "Drop your UI screenshot here" [level=3] [ref=f1e107]
+            - paragraph [ref=f1e108]: Provide a page layout mockup or system interface to help our AI analyze labels, values, and flow hierarchy.
+            - generic [ref=f1e109]: Browse Files
+            - generic [ref=f1e110]:
+              - generic [ref=f1e111]: PNG, JPG
+              - generic [ref=f1e114]: Max 10MB
+          - generic [ref=f1e117]:
+            - heading "Pro Tips for Generation" [level=4] [ref=f1e118]
+            - list [ref=f1e122]:
+              - listitem [ref=f1e123]:
+                - generic [ref=f1e124]: "1"
+                - paragraph [ref=f1e125]: High-resolution screenshots with visible labels index significantly better.
+              - listitem [ref=f1e126]:
+                - generic [ref=f1e127]: "2"
+                - paragraph [ref=f1e128]: Specifying failure criteria under Business Rules automatically enhances Negative scenario cases.
+              - listitem [ref=f1e129]:
+                - generic [ref=f1e130]: "3"
+                - paragraph [ref=f1e131]: Include multi-browser constraints if responsive scaling tests are necessary.
+          - generic [ref=f1e132]:
+            - heading "Quick Shortcuts" [level=4] [ref=f1e133]
+            - generic [ref=f1e134]:
+              - button "Load Template Checkout Flow specs" [ref=f1e135] [cursor=pointer]:
+                - generic [ref=f1e138]: Load Template
+                - generic [ref=f1e139]: Checkout Flow specs
+              - button "Export Guide Format specifications" [ref=f1e140] [cursor=pointer]:
+                - generic [ref=f1e145]: Export Guide
+                - generic [ref=f1e146]: Format specifications

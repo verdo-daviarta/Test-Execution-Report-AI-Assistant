@@ -64,6 +64,7 @@ db.exec(`
     source_generation_id TEXT,
     name TEXT NOT NULL,
     description TEXT NOT NULL,
+    module_name TEXT NOT NULL DEFAULT '',
     sort_order INTEGER NOT NULL,
     PRIMARY KEY (project_id, scenario_id),
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -92,3 +93,5 @@ for (const column of [
 ]) {
   try { db.exec(`ALTER TABLE test_cases ADD COLUMN ${column}`); } catch { /* existing database already migrated */ }
 }
+
+try { db.exec("ALTER TABLE project_scenarios ADD COLUMN module_name TEXT NOT NULL DEFAULT ''"); } catch { /* existing database already migrated */ }

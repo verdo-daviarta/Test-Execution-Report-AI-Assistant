@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import { randomUUID } from "node:crypto";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import OpenAI from "openai";
@@ -181,8 +182,8 @@ function getProjectById(id: string) {
     id: project.id, name: project.name, description: project.description,
     createdAt: project.created_at, updatedAt: project.updated_at,
     scenarios: scenarios.map((scenario) => ({
-      id: scenario.scenario_id, name: scenario.name, description: scenario.description,
-      sourceGenerationId: scenario.source_generation_id, moduleName: scenario.module_name,
+      id: scenario.scenario_id, name: scenario.name, description: scenario.description, moduleName: scenario.module_name || project.name,
+      sourceGenerationId: scenario.source_generation_id,
       count: (db.prepare('SELECT COUNT(*) AS count FROM project_test_cases WHERE scenario_id = ?').get(scenario.scenario_id) as any)?.count || 0,
       testCases: db.prepare(`SELECT id, test_id AS testId, scenario, step, expected_result AS expectedResult, tester_name AS testerName, testing_type AS testingType, testing_status AS testingStatus FROM project_test_cases WHERE scenario_id = ? ORDER BY sort_order`).all(scenario.scenario_id),
     })),
@@ -218,12 +219,16 @@ function registerProjectRoutes(app: express.Express) {
     const scenario = req.body.scenario;
     const now = new Date().toISOString();
     const sourceGenerationId = req.body.generationId || null;
+    const moduleName = String(req.body.moduleName || project.name);
     const transaction = db.transaction(() => {
       // Every generation is appended as a new project scenario. Never reuse the
       // source scenario id, otherwise a later generation could replace existing data.
-      const projectScenarioId = `ps-${req.params.id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      db.prepare('INSERT OR REPLACE INTO project_scenarios (project_id, scenario_id, source_generation_id, name, description, sort_order) VALUES (?, ?, ?, ?, ?, ?)').run(req.params.id, projectScenarioId, sourceGenerationId, scenario.name, scenario.description || '', project.scenarios.length);
-      (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, tester_name, testing_type, testing_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(`ptc-${projectScenarioId}-${tc.id}`, req.params.id, projectScenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.testerName || 'Verdo Daviarta', tc.testingType || 'Functional', tc.testingStatus || 'Not Started'));
+      let projectScenarioId = `ps-${req.params.id}-${randomUUID()}`;
+      while (db.prepare('SELECT 1 FROM project_scenarios WHERE scenario_id = ?').get(projectScenarioId)) {
+        projectScenarioId = `ps-${req.params.id}-${randomUUID()}`;
+      }
+      db.prepare('INSERT OR REPLACE INTO project_scenarios (project_id, scenario_id, source_generation_id, name, description, module_name, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)').run(req.params.id, projectScenarioId, sourceGenerationId, scenario.name, scenario.description || '', moduleName, project.scenarios.length);
+      (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, tester_name, testing_type, testing_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(`ptc-${randomUUID()}`, req.params.id, projectScenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.testerName || 'Verdo Daviarta', tc.testingType || 'Functional', tc.testingStatus || 'Not Started'));
       db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now, req.params.id);
     });
     transaction(); res.status(201).json(getProjectById(req.params.id));
@@ -234,13 +239,13 @@ function registerProjectRoutes(app: express.Express) {
     const transaction = db.transaction(() => {
       const existing = db.prepare('SELECT 1 FROM project_scenarios WHERE project_id = ? AND scenario_id = ?').get(req.params.projectId, req.params.scenarioId);
       if (existing) {
-        db.prepare('UPDATE project_scenarios SET name = ?, description = ? WHERE project_id = ? AND scenario_id = ?').run(scenario.name, scenario.description || '', req.params.projectId, req.params.scenarioId);
+        db.prepare('UPDATE project_scenarios SET name = ?, description = ?, module_name = ? WHERE project_id = ? AND scenario_id = ?').run(scenario.name, scenario.description || '', scenario.moduleName || '', req.params.projectId, req.params.scenarioId);
       } else {
         const count = (db.prepare('SELECT COUNT(*) AS count FROM project_scenarios WHERE project_id = ?').get(req.params.projectId) as { count: number }).count;
-        db.prepare('INSERT INTO project_scenarios (project_id, scenario_id, source_generation_id, name, description, sort_order) VALUES (?, ?, ?, ?, ?, ?)').run(req.params.projectId, req.params.scenarioId, null, scenario.name, scenario.description || '', count);
+        db.prepare('INSERT INTO project_scenarios (project_id, scenario_id, source_generation_id, name, description, module_name, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)').run(req.params.projectId, req.params.scenarioId, null, scenario.name, scenario.description || '', scenario.moduleName || '', count);
       }
        db.prepare('DELETE FROM project_test_cases WHERE project_id = ? AND scenario_id = ?').run(req.params.projectId, req.params.scenarioId);
-       (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, tester_name, testing_type, testing_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(tc.id, req.params.projectId, req.params.scenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.testerName || 'Verdo Daviarta', tc.testingType || 'Functional', tc.testingStatus || 'Not Started'));
+       (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, tester_name, testing_type, testing_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(`ptc-${randomUUID()}`, req.params.projectId, req.params.scenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.testerName || 'Verdo Daviarta', tc.testingType || 'Functional', tc.testingStatus || 'Not Started'));
       db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now, req.params.projectId);
     });
     transaction(); res.json(getProjectById(req.params.projectId));

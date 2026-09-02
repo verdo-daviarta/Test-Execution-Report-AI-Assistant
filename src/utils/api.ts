@@ -75,8 +75,8 @@ export async function deleteProjectFromApi(id: string): Promise<void> {
   if (!response.ok) throw new Error('Failed to delete project.');
 }
 
-export async function saveScenarioToProjectApi(projectId: string, generationId: string, scenario: Scenario): Promise<Project> {
-  return parseResponse<Project>(await fetch(`/api/projects/${projectId}/scenarios`, { method: 'POST', headers: apiHeaders(true), body: JSON.stringify({ generationId, scenario }) }));
+export async function saveScenarioToProjectApi(projectId: string, generationId: string, scenario: Scenario, moduleName: string): Promise<Project> {
+  return parseResponse<Project>(await fetch(`/api/projects/${projectId}/scenarios`, { method: 'POST', headers: apiHeaders(true), body: JSON.stringify({ generationId, scenario, moduleName }) }));
 }
 
 export async function updateProjectScenarioApi(projectId: string, scenario: Scenario): Promise<Project> {

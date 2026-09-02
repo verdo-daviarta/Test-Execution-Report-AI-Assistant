@@ -21,6 +21,7 @@ export interface Project {
 export interface Scenario {
   id: string;
   name: string;
+  moduleName?: string;
   count: number;
   description: string;
   testCases: TestCase[];

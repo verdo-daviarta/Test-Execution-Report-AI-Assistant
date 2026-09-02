@@ -107,6 +107,7 @@ useEffect(() => {
         scenarios: scenarios.map((sc: any, idx: number) => ({
           id: createId(`sc-${idx}`),
           name: sc.name || `Scenario Area #${idx + 1}`,
+          moduleName: params.moduleName,
           count: sc.testCases?.length || 0,
           description: sc.description || 'Generated suite details...',
           testCases: (sc.testCases || []).map((tc: any, cIdx: number) => ({
@@ -129,7 +130,7 @@ useEffect(() => {
       await Promise.all(scenarios.map((scenario: Scenario) => saveScenarioToProjectApi(params.projectId, savedItem.id, {
         ...scenario,
         testCases: (scenario.testCases || []).map((testCase) => ({ ...testCase, testerName: testCase.testerName || 'Verdo Daviarta' })),
-      })));
+      }, params.moduleName)));
       const updatedHistory = await getHistoryFromApi();
 
       setHistoryItems(updatedHistory);
@@ -252,13 +253,6 @@ const handleDeleteHistory = async (id: string) => {
     setSelectedItem({ id: `project-${project.id}`, date: now, createdAt: now, moduleName: project.name, scenarioCount: project.scenarios.length, testCaseCount: project.scenarios.reduce((total, scenario) => total + scenario.testCases.length, 0), status: 'COMPLETED', scenarios: project.scenarios, provider: 'openai' });
     setActiveTab('result_editor');
   };
-  const handleSaveToProject = async (scenarios: Scenario[], projectId: string) => {
-    let project = projects.find(item => item.id === projectId);
-    if (!project) { project = await handleCreateProject('My Project', ''); }
-    await Promise.all(scenarios.map(scenario => saveScenarioToProjectApi(project!.id, selectedItem?.id || '', scenario)));
-    setProjects(await getProjectsFromApi());
-    alert(`${scenarios.length} scenario disimpan ke project "${project.name}".`);
-  };
 
   // Loading Screen cancellation
   const handleCancelGeneration = () => {
@@ -274,7 +268,7 @@ const handleDeleteHistory = async (id: string) => {
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main workspace panels */}
-      <main className="flex-1 pl-64 min-h-screen flex flex-col">
+      <main className="flex-1 pl-64 h-screen min-h-0 overflow-hidden flex flex-col">
         
         {/* Top Navbar Header */}
         <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-10 shrink-0 select-none">
@@ -296,7 +290,7 @@ const handleDeleteHistory = async (id: string) => {
         </header>
 
         {/* View switching panel routes */}
-        <div className="flex-1 flex flex-col overflow-y-auto bg-slate-50/50">
+        <div className="flex-1 min-h-0 flex flex-col overflow-y-auto bg-slate-50/50">
           {isGenerating ? (
             <LoadingScreen
               moduleName={currentGenerationParams?.moduleName || 'New Module'}
@@ -312,15 +306,14 @@ const handleDeleteHistory = async (id: string) => {
               onDeleteItem={handleDeleteHistory}
             />
           ) : activeTab === 'project' ? (
-            <ProjectList projects={projects} onCreate={handleCreateProject} onUpdate={async (project) => { await updateProjectToApi(project); setProjects(await getProjectsFromApi()); }} onDelete={async (id) => { await deleteProjectFromApi(id); setProjects(await getProjectsFromApi()); }} onRemoveScenario={async (projectId, scenarioId) => { await deleteProjectScenarioApi(projectId, scenarioId); setProjects(await getProjectsFromApi()); }} onOpenScenario={handleOpenProjectScenario} onOpenProject={handleOpenProject} />
+            <ProjectList projects={projects} onCreate={handleCreateProject} onUpdate={async (project) => { await updateProjectToApi(project); setProjects(await getProjectsFromApi()); }} onDelete={async (id) => { await deleteProjectFromApi(id); setProjects(await getProjectsFromApi()); }} onOpenProject={handleOpenProject} />
           ) : activeTab === 'result_editor' ? (
             selectedItem ? (
               <ResultEditor
                 item={selectedItem}
                 onSave={handleSaveResult}
                 onRegenerate={handleRegenerate}
-                onSaveToProject={projectContext ? undefined : handleSaveToProject}
-                projects={projects}
+                onDeleteProjectScenario={projectContext ? async (scenarioId) => { await deleteProjectScenarioApi(projectContext, scenarioId); setProjects(await getProjectsFromApi()); } : undefined}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">

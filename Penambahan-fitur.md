@@ -17,4 +17,6 @@
 ## 6. Penambahan button "Project" pada halaman Generate test scenarios,
 	- Button ini merupakan dropdown aksi
     - Button "Save to Project" mengambil/Get list daftar Project yang ada pada Menu "Project"
-## 7. 
+## 7. "Module Name" yang ada pada Generate TER belum memiliki tempat didalam Result editor
+	- Module name yang diinput oleh user pada generate test scenario tidak terdapat didalam Result editor sehingga test scenario tidak memiliki parent Module yang dilakukan Pengujian.
+	

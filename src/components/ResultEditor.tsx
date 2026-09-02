@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { RefreshCw, Save, Download, Trash, Plus, Check, Filter, Sparkles } from 'lucide-react';
-import { HistoryItem, Project, Scenario, TestCase } from '../types';
+import { RefreshCw, Save, Download, Trash, Plus, Check, Filter, Sparkles, ChevronDown, ChevronRight, Layers } from 'lucide-react';
+import { HistoryItem, Scenario, TestCase } from '../types';
 import { createId } from '../utils/id';
+import ConfirmDialog from './ConfirmDialog';
 
 interface ResultEditorProps {
   item: HistoryItem;
   onSave: (updatedItem: HistoryItem) => void;
   onRegenerate: () => void;
-  onSaveToProject?: (scenarios: Scenario[], projectId: string) => void;
-  projects?: Project[];
+  onDeleteProjectScenario?: (scenarioId: string) => Promise<void>;
 }
 
-export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProject, projects = [] }: ResultEditorProps) {
+export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProjectScenario }: ResultEditorProps) {
   const [scenarios, setScenarios] = useState<Scenario[]>(item.scenarios);
   const [activeScenarioId, setActiveScenarioId] = useState<string>(
     item.scenarios[0]?.id || ''
@@ -20,7 +20,8 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<string>('Just now');
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [targetProjectId, setTargetProjectId] = useState(projects[0]?.id || '');
+  const [pendingDelete, setPendingDelete] = useState<{ type: 'testCase' | 'scenario'; id: string; name: string } | null>(null);
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
 
   // Synchronize when the loaded item changes
   useEffect(() => {
@@ -29,7 +30,6 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
       setActiveScenarioId(item.scenarios[0].id);
     }
   }, [item]);
-  useEffect(() => { if (!targetProjectId && projects[0]) setTargetProjectId(projects[0].id); }, [projects, targetProjectId]);
 
   // Handle active scenario selections
   const activeScenario = scenarios.find((s) => s.id === activeScenarioId);
@@ -39,6 +39,11 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
     s.name.toLowerCase().includes(filterQuery.toLowerCase()) ||
     s.description.toLowerCase().includes(filterQuery.toLowerCase())
   );
+  const scenarioGroups = filteredScenarios.reduce<Record<string, Scenario[]>>((groups, scenario) => {
+    const moduleName = scenario.moduleName || item.moduleName || 'Unassigned Module';
+    (groups[moduleName] ||= []).push(scenario);
+    return groups;
+  }, {});
 
   // Save the entire state back to database
   const commitChanges = (updatedScenarios = scenarios) => {
@@ -59,6 +64,14 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
   };
 
   const updateMetadata = (caseId: string, field: keyof TestCase, value: string) => handleTestCaseChange(caseId, field, value);
+
+  const normalizeSteps = (value: string): string => value
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/^\s*\d+[.)]\s*/, '').trim())
+    .filter(Boolean)
+    .map((line, index) => `${index + 1}. ${line}`)
+    .join('\n');
 
   // Change individual field values in a specific testcase
   const handleTestCaseChange = (
@@ -113,6 +126,11 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
 
   // Delete individual test case row
   const deleteTestCaseRow = (caseId: string) => {
+    const testCase = activeScenario?.testCases.find((tc) => tc.id === caseId);
+    setPendingDelete({ type: 'testCase', id: caseId, name: testCase?.testId || 'test case' });
+  };
+
+  const executeDeleteTestCaseRow = (caseId: string) => {
     const updatedScenarios = scenarios.map((s) => {
       if (s.id === activeScenarioId) {
         const remaining = s.testCases.filter((tc) => tc.id !== caseId);
@@ -136,6 +154,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
     const newSc: Scenario = {
       id: createId('sc-dynamic'),
       name: `Scenario Area #${count}`,
+      moduleName: activeScenario?.moduleName || item.moduleName,
       count: 1,
       description: 'Custom added test logic blocks...',
       testCases: [
@@ -155,15 +174,29 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
   };
 
   // Remove active scenario
-  const deleteScenario = (scId: string) => {
+  const deleteScenario = async (scId: string) => {
     if (scenarios.length <= 1) {
       alert('Cannot delete the last remaining scenario.');
       return;
     }
     const filtered = scenarios.filter((s) => s.id !== scId);
+    if (onDeleteProjectScenario) {
+      try {
+        await onDeleteProjectScenario(scId);
+      } catch (error) {
+        console.error(error);
+        setToastMessage('Scenario gagal dihapus dari project.');
+        return;
+      }
+    }
     setScenarios(filtered);
     setActiveScenarioId(filtered[0].id);
     commitChanges(filtered);
+  };
+
+  const requestDeleteScenario = (scId: string) => {
+    const scenario = scenarios.find((candidate) => candidate.id === scId);
+    setPendingDelete({ type: 'scenario', id: scId, name: scenario?.name || 'scenario' });
   };
 
   // Export scenario table as clean Excel-compatible CSV directly to file download
@@ -247,6 +280,16 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
           <span>{toastMessage}</span>
         </div>
       )}
+      {pendingDelete && <ConfirmDialog
+        title={pendingDelete.type === 'scenario' ? 'Delete scenario?' : 'Delete test case?'}
+        message={`${pendingDelete.type === 'scenario' ? 'Scenario' : 'Test case'} "${pendingDelete.name}" will be permanently removed.`}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={async () => {
+          if (pendingDelete.type === 'scenario') await deleteScenario(pendingDelete.id);
+          else executeDeleteTestCaseRow(pendingDelete.id);
+          setPendingDelete(null);
+        }}
+      />}
       {item.isMock && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-amber-50 text-amber-800 border border-amber-200 text-xs px-4 py-2 rounded-lg shadow-sm font-semibold">
           Local fallback result — OpenAI API was not configured.
@@ -254,10 +297,10 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
       )}
 
       {/* Main Two-Column split workspace */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         
         {/* Left Column: Scenario selector rail */}
-        <aside className="w-80 border-r border-slate-200 bg-slate-50/80 flex flex-col">
+        <aside className="w-80 h-full min-h-0 overflow-hidden border-r border-slate-200 bg-slate-50/80 grid grid-rows-[auto_minmax(0,1fr)_auto]">
           
           {/* Header filter search block */}
           <div className="p-6 border-b border-slate-200">
@@ -275,9 +318,20 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
           </div>
 
           {/* Scenario List scroll area */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className="scenario-panel-scroll min-h-0 overscroll-contain custom-scrollbar">
             <ul className="flex flex-col">
-              {filteredScenarios.map((sc) => {
+              {Object.entries(scenarioGroups).map(([moduleName, moduleScenarios]) => {
+                const isExpanded = expandedModules[moduleName] !== false;
+                const totalCases = moduleScenarios.reduce((total, scenario) => total + scenario.testCases.length, 0);
+                return <li key={moduleName} className="border-b border-slate-200">
+                  <button onClick={() => setExpandedModules((current) => ({ ...current, [moduleName]: !isExpanded }))} className="w-full px-5 py-3.5 bg-slate-100/70 hover:bg-slate-100 flex items-center gap-2 text-left transition-colors">
+                    {isExpanded ? <ChevronDown size={15} className="text-slate-500" /> : <ChevronRight size={15} className="text-slate-500" />}
+                    <Layers size={14} className="text-blue-600" />
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-slate-700">{moduleName}</span>
+                    <span className="rounded-md bg-white px-1.5 py-0.5 text-[9px] font-mono font-bold text-slate-500">{moduleScenarios.length} SC · {totalCases} TC</span>
+                  </button>
+                  {isExpanded && <ul>
+              {moduleScenarios.map((sc) => {
                 const isActive = sc.id === activeScenarioId;
                 return (
                   <li key={sc.id} className="relative group/sc border-b border-slate-100/50">
@@ -317,9 +371,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm(`Are you sure you want to delete scenario "${sc.name}" and all its test cases?`)) {
-                            deleteScenario(sc.id);
-                          }
+                          requestDeleteScenario(sc.id);
                         }}
                         className="absolute right-4 bottom-3.5 opacity-0 group-hover/sc:opacity-100 p-1.5 bg-white hover:bg-red-50 text-red-600 rounded-md border border-slate-200 shadow-sm transition-opacity z-10 cursor-pointer"
                         title="Delete scenario"
@@ -329,6 +381,9 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
                     )}
                   </li>
                 );
+              })}
+                  </ul>}
+                </li>;
               })}
 
               {filteredScenarios.length === 0 && (
@@ -357,6 +412,10 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
           {/* Metadata Scenario block top banner info */}
           <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/80">
             <div>
+              <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                <span className="text-blue-400">Module Name</span>
+                <span>{activeScenario?.moduleName || item.moduleName}</span>
+              </div>
               <h2 className="font-sans font-bold text-slate-900 text-base leading-snug">
                 {activeScenario?.name || 'Test Execution Report Scenarios'}
               </h2>
@@ -384,14 +443,6 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
                 <Save size={13} className="stroke-2" />
                 <span>Save Changes</span>
               </button>
-
-              {onSaveToProject && scenarios.length > 0 && <>
-                {projects.length > 0 && <select value={targetProjectId} onChange={e => setTargetProjectId(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white"><option value="">Choose project</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select>}
-                <button
-                disabled={projects.length > 0 && !targetProjectId}
-                onClick={() => onSaveToProject(scenarios, targetProjectId)}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm"
-              ><Plus size={13} /><span>Save All to Project</span></button></>}
 
               <button
                 onClick={handleExportCSV}
@@ -448,8 +499,9 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
                       <textarea
                         value={tc.step}
                         onChange={(e) => handleTestCaseChange(tc.id, 'step', e.target.value)}
+                        onBlur={(e) => handleTestCaseChange(tc.id, 'step', normalizeSteps(e.target.value))}
                         rows={Math.max(3, tc.step.split('\n').length)}
-                        className="w-full bg-transparent border-none p-1 text-xs text-slate-600 leading-relaxed focus:bg-slate-50 focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-medium"
+                        className="w-full bg-transparent border-none p-2 text-xs text-slate-600 leading-6 focus:bg-slate-50 focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-mono whitespace-pre-wrap wrap-break-words"
                       />
                     </td>
 
@@ -464,9 +516,9 @@ export default function ResultEditor({ item, onSave, onRegenerate, onSaveToProje
                     </td>
 
                     {/* Remove row trash bin action */}
-                    <td className="px-3 py-4.5 align-top"><input value={tc.testerName || 'Verdo Daviarta'} onChange={e => updateMetadata(tc.id, 'testerName', e.target.value)} className="w-28 bg-transparent border border-slate-200 rounded px-2 py-1 text-xs" /></td>
-                    <td className="px-3 py-4.5 align-top"><select value={tc.testingType || 'Functional'} onChange={e => updateMetadata(tc.id, 'testingType', e.target.value)} className="w-28 border border-slate-200 rounded px-1 py-1 text-xs bg-white"><option>Functional</option><option>Integration</option><option>Regression</option><option>Performance</option><option>Security</option><option>Usability</option></select></td>
-                    <td className="px-3 py-4.5 align-top"><select value={tc.testingStatus || 'Not Started'} onChange={e => updateMetadata(tc.id, 'testingStatus', e.target.value)} className="w-28 border border-slate-200 rounded px-1 py-1 text-xs bg-white"><option>Not Started</option><option>In Progress</option><option>Passed</option><option>Failed</option><option>Blocked</option></select></td>
+                    <td className="px-3 py-4.5 align-top"><input value={tc.testerName || 'Verdo Daviarta'} onChange={e => updateMetadata(tc.id, 'testerName', e.target.value)} className="w-32 bg-slate-50/60 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-medium outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder:text-slate-400" /></td>
+                    <td className="px-3 py-4.5 align-top"><select value={tc.testingType || 'Functional'} onChange={e => updateMetadata(tc.id, 'testingType', e.target.value)} className="w-32 bg-slate-50/60 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-medium outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"><option>Functional</option><option>Integration</option><option>Regression</option><option>Performance</option><option>Security</option><option>Usability</option></select></td>
+                    <td className="px-3 py-4.5 align-top"><select value={tc.testingStatus || 'Not Started'} onChange={e => updateMetadata(tc.id, 'testingStatus', e.target.value)} className="w-32 bg-slate-50/60 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-medium outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"><option>Not Started</option><option>In Progress</option><option>Passed</option><option>Failed</option><option>Blocked</option></select></td>
 
                     {/* Remove row trash bin action */}
                     <td className="px-6 py-4.5 align-middle text-center shrink-0">
