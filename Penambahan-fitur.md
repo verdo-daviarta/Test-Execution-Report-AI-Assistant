@@ -19,4 +19,5 @@
     - Button "Save to Project" mengambil/Get list daftar Project yang ada pada Menu "Project"
 ## 7. "Module Name" yang ada pada Generate TER belum memiliki tempat didalam Result editor
 	- Module name yang diinput oleh user pada generate test scenario tidak terdapat didalam Result editor sehingga test scenario tidak memiliki parent Module yang dilakukan Pengujian.
-	
+## 8. hasil generate Test case tidak menyertakan "coverage test"
+	- Pemilihan Coverage Test yang dilakukan user pada halaman New Generation tidak masuk kedalaman test case, sehingga user tidak tahu test case tersebut masuk dalam kategori test negatif, positif, validasi, atau boundary.

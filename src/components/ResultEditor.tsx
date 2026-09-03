@@ -107,6 +107,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
       scenario: 'New behavior specification',
       step: '1. Action phase\n2. Verify state outcome',
       expectedResult: 'Expected outcome successfully checked.',
+      coverageType: 'Positive',
     };
 
     const updatedScenarios = scenarios.map((s) => {
@@ -164,6 +165,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
           scenario: 'Verify parameter action',
           step: '1. Navigate to endpoint\n2. Enter details\n3. Push trigger',
           expectedResult: 'Operation resolves properly.',
+          coverageType: 'Positive',
         },
       ],
     };
@@ -204,12 +206,16 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
     if (!activeScenario) return;
     
     // Construct CSV output safely
-    const headers = ['Test ID', 'Scenario', 'Steps', 'Expected Result'];
+    const headers = ['Test ID', 'Scenario', 'Steps', 'Expected Result', 'Coverage Test', 'Nama Tester', 'Type Testing', 'Status Testing'];
     const rows = activeScenario.testCases.map((tc) => [
       tc.testId,
       tc.scenario,
       tc.step.replace(/\n/g, '; '),
       tc.expectedResult,
+      tc.coverageType || 'Positive',
+      tc.testerName || 'Verdo Daviarta',
+      tc.testingType || 'Functional',
+      tc.testingStatus || 'Not Started',
     ]);
 
     const csvContent =
@@ -464,6 +470,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
                   <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-1/4">Scenario Target</th>
                   <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-1/3">Execution Steps</th>
                   <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-1/3">Expected Outcome</th>
+                  <th className="px-3 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Coverage Test</th>
                   <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nama Tester</th>
                   <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Type Testing</th>
                   <th className="px-6 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status Testing</th>
@@ -515,7 +522,12 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
                       />
                     </td>
 
-                    {/* Remove row trash bin action */}
+                    {/* AI-generated coverage classification is intentionally read-only. */}
+                    <td className="px-3 py-4.5 align-top">
+                      <span className="inline-flex min-w-28 justify-center rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">
+                        {tc.coverageType || 'Positive'}
+                      </span>
+                    </td>
                     <td className="px-3 py-4.5 align-top"><input value={tc.testerName || 'Verdo Daviarta'} onChange={e => updateMetadata(tc.id, 'testerName', e.target.value)} className="w-32 bg-slate-50/60 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-medium outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder:text-slate-400" /></td>
                     <td className="px-3 py-4.5 align-top"><select value={tc.testingType || 'Functional'} onChange={e => updateMetadata(tc.id, 'testingType', e.target.value)} className="w-32 bg-slate-50/60 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-medium outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"><option>Functional</option><option>Integration</option><option>Regression</option><option>Performance</option><option>Security</option><option>Usability</option></select></td>
                     <td className="px-3 py-4.5 align-top"><select value={tc.testingStatus || 'Not Started'} onChange={e => updateMetadata(tc.id, 'testingStatus', e.target.value)} className="w-32 bg-slate-50/60 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-medium outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"><option>Not Started</option><option>In Progress</option><option>Passed</option><option>Failed</option><option>Blocked</option></select></td>
@@ -536,7 +548,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
 
                 {(!activeScenario || activeScenario.testCases.length === 0) && (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-xs text-slate-400 font-semibold font-sans">
+                    <td colSpan={9} className="px-6 py-12 text-center text-xs text-slate-400 font-semibold font-sans">
                       No test case rows currently present. Add a new row below.
                     </td>
                   </tr>

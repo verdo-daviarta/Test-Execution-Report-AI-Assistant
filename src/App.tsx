@@ -5,7 +5,7 @@ import LoadingScreen from './components/LoadingScreen';
 import ResultEditor from './components/ResultEditor';
 import HistoryList from './components/HistoryList';
 import ProjectList from './components/ProjectList';
-import { HistoryItem, Project, Scenario } from './types';
+import { HistoryItem, Project, Scenario, TestCase } from './types';
 import {
   getHistoryFromApi,
   saveHistoryToApi,
@@ -14,6 +14,19 @@ import {
   getProjectsFromApi, createProjectToApi, updateProjectToApi, deleteProjectFromApi, saveScenarioToProjectApi, updateProjectScenarioApi, deleteProjectScenarioApi,
 } from './utils/api';
 import { createId } from './utils/id';
+
+const COVERAGE_TYPES = ['Positive', 'Negative', 'Validation', 'Boundary'] as const;
+
+function resolveCoverageType(value: unknown, requestedCoverages: string[], position: number): TestCase['coverageType'] {
+  const normalized = String(value || '').trim().toLowerCase();
+  const fromResponse = COVERAGE_TYPES.find((coverage) => coverage.toLowerCase() === normalized);
+  if (fromResponse) return fromResponse;
+
+  const selected = requestedCoverages.filter((coverage): coverage is typeof COVERAGE_TYPES[number] =>
+    COVERAGE_TYPES.includes(coverage as typeof COVERAGE_TYPES[number])
+  );
+  return selected[position % selected.length] || 'Positive';
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'new_generation' | 'history' | 'project' | 'result_editor'>('new_generation');
@@ -115,7 +128,8 @@ useEffect(() => {
             testId: tc.testId || `TC-${(cIdx + 1).toString().padStart(3, '0')}`,
             scenario: tc.scenario || 'Default case target',
             step: tc.step || '1. Perform operation',
-            expectedResult: tc.expectedResult || 'Expected outcome validates successfully'
+            expectedResult: tc.expectedResult || 'Expected outcome validates successfully',
+            coverageType: resolveCoverageType(tc.coverageType, params.coverages, idx + cIdx),
           }))
         })),
         requirement: params.requirement,
@@ -127,9 +141,13 @@ useEffect(() => {
 
       // Persistence
       const savedItem = await saveHistoryToApi(newItem);
-      await Promise.all(scenarios.map((scenario: Scenario) => saveScenarioToProjectApi(params.projectId, savedItem.id, {
+      await Promise.all(scenarios.map((scenario: Scenario, scenarioIndex: number) => saveScenarioToProjectApi(params.projectId, savedItem.id, {
         ...scenario,
-        testCases: (scenario.testCases || []).map((testCase) => ({ ...testCase, testerName: testCase.testerName || 'Verdo Daviarta' })),
+        testCases: (scenario.testCases || []).map((testCase, testCaseIndex) => ({
+          ...testCase,
+          coverageType: resolveCoverageType(testCase.coverageType, params.coverages, scenarioIndex + testCaseIndex),
+          testerName: testCase.testerName || 'Verdo Daviarta',
+        })),
       }, params.moduleName)));
       const updatedHistory = await getHistoryFromApi();
 

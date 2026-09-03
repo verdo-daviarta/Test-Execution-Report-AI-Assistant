@@ -4,6 +4,7 @@ export interface TestCase {
   scenario: string;
   step: string;
   expectedResult: string;
+  coverageType?: 'Positive' | 'Negative' | 'Validation' | 'Boundary';
   testerName?: string;
   testingType?: 'Functional' | 'Integration' | 'Regression' | 'Performance' | 'Security' | 'Usability';
   testingStatus?: 'Not Started' | 'In Progress' | 'Passed' | 'Failed' | 'Blocked';

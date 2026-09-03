@@ -9,6 +9,58 @@ import { db } from './src/database';
 
 dotenv.config();
 
+const COVERAGE_TYPES = ['Positive', 'Negative', 'Validation', 'Boundary'] as const;
+type CoverageType = (typeof COVERAGE_TYPES)[number];
+
+function normalizeCoverageType(value: unknown): CoverageType | undefined {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized.startsWith('positive') || normalized.startsWith('positif')) return 'Positive';
+  if (normalized.startsWith('negative') || normalized.startsWith('negatif')) return 'Negative';
+  if (normalized.startsWith('validation') || normalized.startsWith('validasi')) return 'Validation';
+  if (normalized.startsWith('boundary') || normalized.startsWith('batas')) return 'Boundary';
+  return undefined;
+}
+
+function inferCoverageType(testCase: any): CoverageType | undefined {
+  const content = `${testCase.scenario || ''} ${testCase.step || ''} ${testCase.expectedResult || ''}`.toLowerCase();
+  if (/(injection|saniti[sz]|special character|data type|format)/.test(content)) return 'Validation';
+  if (/(invalid|incorrect|empty|missing|declin|error|fail|lockout|forbidden)/.test(content)) return 'Negative';
+  if (/(minimum|maximum|threshold|limit|overflow|length)/.test(content)) return 'Boundary';
+  return undefined;
+}
+
+function applyCoverageTypes(payload: any, requestedCoverages: unknown): any {
+  const selected = Array.from(new Set(
+    (Array.isArray(requestedCoverages) ? requestedCoverages : [])
+      .map(normalizeCoverageType)
+      .filter((coverage): coverage is CoverageType => Boolean(coverage))
+  ));
+  const allowed: CoverageType[] = selected.length > 0 ? selected : ['Positive', 'Negative'];
+  const cases = (payload.scenarios || []).flatMap((scenario: any) => scenario.testCases || []);
+  const aiCoverage = cases.map((testCase: any) => normalizeCoverageType(testCase.coverageType));
+  const isSingleRepeatedLabel = allowed.length > 1 && new Set(aiCoverage.filter(Boolean)).size <= 1;
+  const assigned = new Set<CoverageType>();
+  let fallbackIndex = 0;
+
+  return {
+    ...payload,
+    scenarios: (payload.scenarios || []).map((scenario: any) => ({
+      ...scenario,
+      testCases: (scenario.testCases || []).map((testCase: any) => {
+        const aiValue = normalizeCoverageType(testCase.coverageType);
+        let coverageType = !isSingleRepeatedLabel && aiValue && allowed.includes(aiValue) ? aiValue : undefined;
+        coverageType ||= inferCoverageType(testCase);
+        if (!coverageType || !allowed.includes(coverageType)) {
+          coverageType = allowed.find((coverage) => !assigned.has(coverage)) || allowed[fallbackIndex % allowed.length];
+          fallbackIndex += 1;
+        }
+        assigned.add(coverageType);
+        return { ...testCase, coverageType };
+      }),
+    })),
+  };
+}
+
 function getGenerationById(id: string) {
   const generation = db
     .prepare('SELECT * FROM generations WHERE id = ?')
@@ -63,6 +115,7 @@ function getGenerationById(id: string) {
             scenario,
             step,
             expected_result AS expectedResult,
+            coverage_type AS coverageType,
             tester_name AS testerName,
             testing_type AS testingType,
             testing_status AS testingStatus
@@ -117,8 +170,8 @@ app.get('/api/generations', (_req, res) => {
         VALUES (?, ?, ?, ?, ?)
       `);
       const insertTestCase = db.prepare(`
-        INSERT INTO test_cases (id, scenario_id, test_id, scenario, step, expected_result, sort_order, tester_name, testing_type, testing_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO test_cases (id, scenario_id, test_id, scenario, step, expected_result, sort_order, coverage_type, tester_name, testing_type, testing_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       (item.scenarios || []).forEach((scenario: any, scenarioIndex: number) => {
@@ -132,6 +185,7 @@ app.get('/api/generations', (_req, res) => {
             testCase.step,
             testCase.expectedResult,
             testCaseIndex,
+            testCase.coverageType || 'Positive',
             testCase.testerName || 'Verdo Daviarta',
             testCase.testingType || 'Functional',
             testCase.testingStatus || 'Not Started',
@@ -185,7 +239,7 @@ function getProjectById(id: string) {
       id: scenario.scenario_id, name: scenario.name, description: scenario.description, moduleName: scenario.module_name || project.name,
       sourceGenerationId: scenario.source_generation_id,
       count: (db.prepare('SELECT COUNT(*) AS count FROM project_test_cases WHERE scenario_id = ?').get(scenario.scenario_id) as any)?.count || 0,
-      testCases: db.prepare(`SELECT id, test_id AS testId, scenario, step, expected_result AS expectedResult, tester_name AS testerName, testing_type AS testingType, testing_status AS testingStatus FROM project_test_cases WHERE scenario_id = ? ORDER BY sort_order`).all(scenario.scenario_id),
+      testCases: db.prepare(`SELECT id, test_id AS testId, scenario, step, expected_result AS expectedResult, coverage_type AS coverageType, tester_name AS testerName, testing_type AS testingType, testing_status AS testingStatus FROM project_test_cases WHERE scenario_id = ? ORDER BY sort_order`).all(scenario.scenario_id),
     })),
   };
 }
@@ -228,7 +282,7 @@ function registerProjectRoutes(app: express.Express) {
         projectScenarioId = `ps-${req.params.id}-${randomUUID()}`;
       }
       db.prepare('INSERT OR REPLACE INTO project_scenarios (project_id, scenario_id, source_generation_id, name, description, module_name, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)').run(req.params.id, projectScenarioId, sourceGenerationId, scenario.name, scenario.description || '', moduleName, project.scenarios.length);
-      (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, tester_name, testing_type, testing_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(`ptc-${randomUUID()}`, req.params.id, projectScenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.testerName || 'Verdo Daviarta', tc.testingType || 'Functional', tc.testingStatus || 'Not Started'));
+      (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, coverage_type, tester_name, testing_type, testing_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(`ptc-${randomUUID()}`, req.params.id, projectScenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.coverageType || 'Positive', tc.testerName || 'Verdo Daviarta', tc.testingType || 'Functional', tc.testingStatus || 'Not Started'));
       db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now, req.params.id);
     });
     transaction(); res.status(201).json(getProjectById(req.params.id));
@@ -245,7 +299,7 @@ function registerProjectRoutes(app: express.Express) {
         db.prepare('INSERT INTO project_scenarios (project_id, scenario_id, source_generation_id, name, description, module_name, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)').run(req.params.projectId, req.params.scenarioId, null, scenario.name, scenario.description || '', scenario.moduleName || '', count);
       }
        db.prepare('DELETE FROM project_test_cases WHERE project_id = ? AND scenario_id = ?').run(req.params.projectId, req.params.scenarioId);
-       (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, tester_name, testing_type, testing_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(`ptc-${randomUUID()}`, req.params.projectId, req.params.scenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.testerName || 'Verdo Daviarta', tc.testingType || 'Functional', tc.testingStatus || 'Not Started'));
+       (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, coverage_type, tester_name, testing_type, testing_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(`ptc-${randomUUID()}`, req.params.projectId, req.params.scenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.coverageType || 'Positive', tc.testerName || 'Verdo Daviarta', tc.testingType || 'Functional', tc.testingStatus || 'Not Started'));
       db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now, req.params.projectId);
     });
     transaction(); res.json(getProjectById(req.params.projectId));
@@ -324,13 +378,16 @@ Requested Coverage levels: ${coverages?.join(", ") || "Positive, Negative"}
 
 Guidelines:
 1. Divide testing into logical Scenario blocks (aim for 2 to 4 scenarios) corresponding to key testing areas matching requested coverages.
-2. For each Scenario, generate 2-4 comprehensive step-by-step Test Cases.
+2. For each Scenario, generate 2-4 comprehensive step-by-step Test Cases. Across the complete response, include at least one test case for every requested coverage level.
 3. Keep descriptions professional and realistic.
 4. Each testCase MUST have:
    - testId: e.g. "TC-001", "TC-002"
    - scenario: Brief descriptive action/focus.
    - step: Clear, bulleted/numbered guidelines inside a single string separated by newlines \\n.
-   - expectedResult: Clear criteria for verification achievements.`;
+   - expectedResult: Clear criteria for verification achievements.
+   - coverageType: exactly one of the requested coverage levels: Positive, Negative, Validation, or Boundary.
+
+Every generated test case must be classified accurately with coverageType.`;
 
       if (screenshot) {
         promptText += "\n\nA UI screenshot is attached. Analyze its visible components and match them in the generated steps.";
@@ -355,14 +412,14 @@ Guidelines:
                 scenarios: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {
                   name: { type: Type.STRING }, description: { type: Type.STRING },
                   testCases: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {
-                    testId: { type: Type.STRING }, scenario: { type: Type.STRING }, step: { type: Type.STRING }, expectedResult: { type: Type.STRING }
-                  }, required: ['testId', 'scenario', 'step', 'expectedResult'] } }
+                    testId: { type: Type.STRING }, scenario: { type: Type.STRING }, step: { type: Type.STRING }, expectedResult: { type: Type.STRING }, coverageType: { type: Type.STRING, enum: ['Positive', 'Negative', 'Validation', 'Boundary'] }
+                  }, required: ['testId', 'scenario', 'step', 'expectedResult', 'coverageType'] } }
                 }, required: ['name', 'description', 'testCases'] } }
               }, required: ['scenarios']
             }
           }
         });
-        return res.json({ ...JSON.parse(response.text || '{}'), isMock: false, provider });
+        return res.json({ ...applyCoverageTypes(JSON.parse(response.text || '{}'), coverages), isMock: false, provider });
       }
 
       {
@@ -386,15 +443,15 @@ Guidelines:
                 type: 'object', additionalProperties: false,
                 properties: { scenarios: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
                   name: { type: 'string' }, description: { type: 'string' }, testCases: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
-                    testId: { type: 'string' }, scenario: { type: 'string' }, step: { type: 'string' }, expectedResult: { type: 'string' }
-                  }, required: ['testId', 'scenario', 'step', 'expectedResult'] } }
+                    testId: { type: 'string' }, scenario: { type: 'string' }, step: { type: 'string' }, expectedResult: { type: 'string' }, coverageType: { type: 'string', enum: ['Positive', 'Negative', 'Validation', 'Boundary'] }
+                  }, required: ['testId', 'scenario', 'step', 'expectedResult', 'coverageType'] } }
                 }, required: ['name', 'description', 'testCases'] } } }, required: ['scenarios']
               }
             }
           }
         });
         const responseText = response.choices[0]?.message?.content || '{}';
-        return res.json({ ...JSON.parse(responseText), isMock: false, provider });
+        return res.json({ ...applyCoverageTypes(JSON.parse(responseText), coverages), isMock: false, provider });
       }
 
     } catch (error: any) {
@@ -484,13 +541,15 @@ function generateFallbackScenarios(
           testId: `TC-0${codeIndex++ < 10 ? '0' + (codeIndex-1) : (codeIndex-1)}`,
           scenario: `Verify default behavior for ${moduleName}`,
           step: `1. Open form view\n2. Provide input for requirement: "${requirement || 'Enter complete requested forms information'}"\n3. Click primary action button`,
-          expectedResult: `Process runs successfully and matches rules: "${businessRules || 'Standard confirmation is shown.'}"`
+          expectedResult: `Process runs successfully and matches rules: "${businessRules || 'Standard confirmation is shown.'}"`,
+          coverageType: 'Positive'
         },
         {
           testId: `TC-0${codeIndex++ < 10 ? '0' + (codeIndex-1) : (codeIndex-1)}`,
           scenario: "Verify persistent session state",
           step: "1. Form complete state loaded\n2. Terminate active application browser view\n3. Relaunch session screen",
-          expectedResult: "Original form configurations and saved states load gracefully without re-entry."
+          expectedResult: "Original form configurations and saved states load gracefully without re-entry.",
+          coverageType: 'Positive'
         }
       ]
     });
@@ -505,13 +564,15 @@ function generateFallbackScenarios(
           testId: `TC-0${codeIndex++ < 10 ? '0' + (codeIndex-1) : (codeIndex-1)}`,
           scenario: "Empty fields restriction flow",
           step: "1. Access workspace\n2. Clear primary input parameters\n3. Click Submit",
-          expectedResult: "Form denies submission. Correct form outlines are flagged and validation toasts display error warnings."
+          expectedResult: "Form denies submission. Correct form outlines are flagged and validation toasts display error warnings.",
+          coverageType: 'Negative'
         },
         {
           testId: `TC-0${codeIndex++ < 10 ? '0' + (codeIndex-1) : (codeIndex-1)}`,
           scenario: "Violation of defined business rules",
           step: `1. Insert deliberately incorrect values violating business logic\n2. Click Action Button`,
-          expectedResult: `System catches discrepancy and triggers proper handler warning matching rule specifications.`
+          expectedResult: `System catches discrepancy and triggers proper handler warning matching rule specifications.`,
+          coverageType: 'Negative'
         }
       ]
     });
@@ -526,7 +587,8 @@ function generateFallbackScenarios(
           testId: `TC-0${codeIndex++ < 10 ? '0' + (codeIndex-1) : (codeIndex-1)}`,
           scenario: "Symbol Injection and string character sanitization checks",
           step: "1. For parameters inputs, inject common dangerous code characters like SQL quotes ' OR 1=1 or script tags <script>\n2. Click Submit / Generate action",
-          expectedResult: "Safe sanitization techniques escape inputs cleanly without database side-effects."
+          expectedResult: "Safe sanitization techniques escape inputs cleanly without database side-effects.",
+          coverageType: 'Validation'
         }
       ]
     });
@@ -541,7 +603,8 @@ function generateFallbackScenarios(
           testId: `TC-0${codeIndex++ < 10 ? '0' + (codeIndex-1) : (codeIndex-1)}`,
           scenario: "Buffer threshold sizing overflow",
           step: "1. Paste extremely heavy content (larger than normal capacity ranges) inside fields\n2. Press processing triggers",
-          expectedResult: "The system prevents crash patterns, either clipping values or outputting a prompt warning."
+          expectedResult: "The system prevents crash patterns, either clipping values or outputting a prompt warning.",
+          coverageType: 'Boundary'
         }
       ]
     });

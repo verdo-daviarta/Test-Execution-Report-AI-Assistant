@@ -44,6 +44,7 @@ db.exec(`
     step TEXT NOT NULL,
     expected_result TEXT NOT NULL,
     sort_order INTEGER NOT NULL,
+    coverage_type TEXT NOT NULL DEFAULT 'Positive',
     tester_name TEXT NOT NULL DEFAULT 'Verdo Daviarta',
     testing_type TEXT NOT NULL DEFAULT 'Functional',
     testing_status TEXT NOT NULL DEFAULT 'Not Started',
@@ -79,6 +80,7 @@ db.exec(`
     step TEXT NOT NULL,
     expected_result TEXT NOT NULL,
     sort_order INTEGER NOT NULL,
+    coverage_type TEXT NOT NULL DEFAULT 'Positive',
     tester_name TEXT NOT NULL DEFAULT 'Verdo Daviarta',
     testing_type TEXT NOT NULL DEFAULT 'Functional',
     testing_status TEXT NOT NULL DEFAULT 'Not Started',
@@ -87,6 +89,7 @@ db.exec(`
 `);
 
 for (const column of [
+  "coverage_type TEXT NOT NULL DEFAULT 'Positive'",
   "tester_name TEXT NOT NULL DEFAULT 'Verdo Daviarta'",
   "testing_type TEXT NOT NULL DEFAULT 'Functional'",
   "testing_status TEXT NOT NULL DEFAULT 'Not Started'",
@@ -94,4 +97,5 @@ for (const column of [
   try { db.exec(`ALTER TABLE test_cases ADD COLUMN ${column}`); } catch { /* existing database already migrated */ }
 }
 
+try { db.exec("ALTER TABLE project_test_cases ADD COLUMN coverage_type TEXT NOT NULL DEFAULT 'Positive'"); } catch { /* existing database already migrated */ }
 try { db.exec("ALTER TABLE project_scenarios ADD COLUMN module_name TEXT NOT NULL DEFAULT ''"); } catch { /* existing database already migrated */ }
