@@ -17,7 +17,7 @@ interface NewGenerationProps {
 
 export default function NewGeneration({ onGenerate, projects }: NewGenerationProps) {
   const [moduleName, setModuleName] = useState('');
-  const [provider, setProvider] = useState<'openai' | 'gemini'>('openai');
+  const [provider, setProvider] = useState<'openai' | 'gemini'>('gemini');
   const [requirement, setRequirement] = useState('');
   const [businessRules, setBusinessRules] = useState('');
   const [coverages, setCoverages] = useState<string[]>(['Positive', 'Negative']);

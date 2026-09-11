@@ -1,4 +1,14 @@
 import { HistoryItem, Project, Scenario } from '../types';
+import type { GenerationInput, GenerationResult } from '../../shared/generation';
+
+export async function generateScenariosFromApi(input: GenerationInput, signal?: AbortSignal): Promise<GenerationResult> {
+  return parseResponse<GenerationResult>(await fetch('/api/generate', {
+    method: 'POST',
+    headers: apiHeaders(true),
+    body: JSON.stringify(input),
+    signal,
+  }));
+}
 
 function apiHeaders(includeJson = false): HeadersInit {
   return {

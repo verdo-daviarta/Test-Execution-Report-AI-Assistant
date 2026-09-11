@@ -8,6 +8,7 @@ import ProjectList from './components/ProjectList';
 import { HistoryItem, Project, Scenario, TestCase } from './types';
 import {
   getHistoryFromApi,
+  generateScenariosFromApi,
   saveHistoryToApi,
   updateHistoryToApi,
   deleteHistoryFromApi,
@@ -81,24 +82,7 @@ useEffect(() => {
     setIsGenerating(true);
 
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(import.meta.env.VITE_INTERNAL_API_KEY
-            ? { 'x-api-key': import.meta.env.VITE_INTERNAL_API_KEY }
-            : {}),
-        },
-        body: JSON.stringify(params),
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Server responded with an error during generation');
-      }
-
-      const data = await response.json();
+      const data = await generateScenariosFromApi(params, controller.signal);
       const scenarios = data.scenarios || [];
 
       // Format custom date string, e.g. "Oct 24, 2023 · 14:32"
@@ -177,7 +161,7 @@ useEffect(() => {
         // Fallback construct params from active selection metadata
         handleGenerate({
           moduleName: selectedItem.moduleName,
-          provider: selectedItem.provider || 'openai',
+          provider: selectedItem.provider || 'gemini',
           requirement: selectedItem.requirement || '',
           businessRules: selectedItem.businessRules || '',
           coverages: selectedItem.coverages || ['Positive', 'Negative'],
@@ -262,13 +246,13 @@ const handleDeleteHistory = async (id: string) => {
   const handleOpenProjectScenario = (project: Project, scenario: Scenario & { sourceGenerationId?: string; moduleName?: string }) => {
     const now = new Date().toISOString();
     setProjectContext(project.id);
-    setSelectedItem({ id: `project-${project.id}`, date: now, createdAt: now, moduleName: scenario.moduleName || project.name, scenarioCount: 1, testCaseCount: scenario.testCases.length, status: 'COMPLETED', scenarios: [scenario], provider: 'openai' });
+    setSelectedItem({ id: `project-${project.id}`, date: now, createdAt: now, moduleName: scenario.moduleName || project.name, scenarioCount: 1, testCaseCount: scenario.testCases.length, status: 'COMPLETED', scenarios: [scenario], provider: 'gemini' });
     setActiveTab('result_editor');
   };
   const handleOpenProject = (project: Project) => {
     const now = new Date().toISOString();
     setProjectContext(project.id);
-    setSelectedItem({ id: `project-${project.id}`, date: now, createdAt: now, moduleName: project.name, scenarioCount: project.scenarios.length, testCaseCount: project.scenarios.reduce((total, scenario) => total + scenario.testCases.length, 0), status: 'COMPLETED', scenarios: project.scenarios, provider: 'openai' });
+    setSelectedItem({ id: `project-${project.id}`, date: now, createdAt: now, moduleName: project.name, scenarioCount: project.scenarios.length, testCaseCount: project.scenarios.reduce((total, scenario) => total + scenario.testCases.length, 0), status: 'COMPLETED', scenarios: project.scenarios, provider: 'gemini' });
     setActiveTab('result_editor');
   };
 

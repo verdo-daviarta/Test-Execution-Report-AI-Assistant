@@ -16,7 +16,7 @@ Pengguna dapat memasukkan spesifikasi modul, requirement, business rules, piliha
 - Result Editor untuk mengedit, menambah, dan menghapus scenario/test case.
 - Pencarian dan filter scenario.
 - Regenerate hasil dan export CSV.
-- History generation tersimpan di localStorage browser.
+- History generation dan Project tersimpan di SQLite pada server.
 
 ## Teknologi
 
@@ -44,7 +44,7 @@ npm install
 Buat file `.env` di root project:
 
 ```env
-AI_PROVIDER="openai"
+AI_PROVIDER="gemini"
 
 OPENAI_API_KEY="sk-..."
 OPENAI_MODEL="gpt-4o-mini"
@@ -110,7 +110,11 @@ Nilai `provider` yang didukung: `openai` dan `gemini`.
 
 ## Penyimpanan Data
 
-History saat ini disimpan di localStorage browser. Data belum tersinkronisasi antar perangkat dan belum menggunakan database atau kolaborasi multi-user.
+History dan Project disimpan di `data/test-execution-report.db` pada server. Perangkat yang mengakses backend yang sama memakai data bersama; muat ulang History untuk mengambil data terbaru. Autentikasi dan pembatasan akses berdasarkan anggota tim/project belum tersedia.
+
+## Arsitektur
+
+Frontend menggunakan API client, route generation meneruskan request ke service, dan adapter OpenAI/Gemini menyamakan kontrak internal. Lihat [arsitektur dan batas multi-user](backend/README.md) untuk struktur modul dan strategi pengujian.
 
 ## Keamanan
 
