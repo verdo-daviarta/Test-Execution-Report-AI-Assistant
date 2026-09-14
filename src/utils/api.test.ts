@@ -13,7 +13,8 @@ describe('generation API client', () => {
     expect(await generateScenariosFromApi(input, controller.signal)).toEqual(result);
     expect(fetchMock).toHaveBeenCalledWith('/api/generate', expect.objectContaining({
       method: 'POST', body: JSON.stringify(input), signal: controller.signal,
-      headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+      credentials: 'same-origin',
+      headers: expect.objectContaining({ 'content-type': 'application/json', 'x-requested-with': 'TestExecutionReport' }),
     }));
   });
   it('surfaces server errors', async () => {

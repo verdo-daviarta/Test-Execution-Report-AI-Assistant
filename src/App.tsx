@@ -15,6 +15,8 @@ import {
   getProjectsFromApi, createProjectToApi, updateProjectToApi, deleteProjectFromApi, saveScenarioToProjectApi, updateProjectScenarioApi, deleteProjectScenarioApi,
 } from './utils/api';
 import { createId } from './utils/id';
+import { saveChangedProjectScenarios } from './utils/projectSave';
+import type { AuthUser } from '../shared/auth';
 
 const COVERAGE_TYPES = ['Positive', 'Negative', 'Validation', 'Boundary'] as const;
 
@@ -29,7 +31,7 @@ function resolveCoverageType(value: unknown, requestedCoverages: string[], posit
   return selected[position % selected.length] || 'Positive';
 }
 
-export default function App() {
+export default function App({ user, onLogout, loggingOut }: { user: AuthUser; onLogout: () => void; loggingOut: boolean }) {
   const [activeTab, setActiveTab] = useState<'new_generation' | 'history' | 'project' | 'result_editor'>('new_generation');
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -47,6 +49,7 @@ export default function App() {
   } | null>(null);
   const [regeneratePending, setRegeneratePending] = useState(false);
   const generationAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => generationAbortRef.current?.abort(), []);
 
   // Initialize history items from database API
 useEffect(() => {
@@ -125,14 +128,9 @@ useEffect(() => {
 
       // Persistence
       const savedItem = await saveHistoryToApi(newItem);
-      await Promise.all(scenarios.map((scenario: Scenario, scenarioIndex: number) => saveScenarioToProjectApi(params.projectId, savedItem.id, {
-        ...scenario,
-        testCases: (scenario.testCases || []).map((testCase, testCaseIndex) => ({
-          ...testCase,
-          coverageType: resolveCoverageType(testCase.coverageType, params.coverages, scenarioIndex + testCaseIndex),
-          testerName: testCase.testerName || 'Verdo Daviarta',
-        })),
-      }, params.moduleName)));
+      await Promise.all(savedItem.scenarios.map(scenario =>
+        saveScenarioToProjectApi(params.projectId, savedItem.id, scenario, params.moduleName)
+      ));
       const updatedHistory = await getHistoryFromApi();
 
       setHistoryItems(updatedHistory);
@@ -177,39 +175,30 @@ useEffect(() => {
   // Selected item changes committed to database and state
 const handleSaveResult = async (updatedItem: HistoryItem) => {
   if (projectContext) {
-    try {
-      await Promise.all(updatedItem.scenarios.map(scenario => updateProjectScenarioApi(projectContext, scenario)));
-      setProjects(await getProjectsFromApi());
+    const refreshed = await saveChangedProjectScenarios(
+      projectContext, selectedItem?.scenarios || [], updatedItem.scenarios, updateProjectScenarioApi,
+    );
+    if (refreshed) {
+      setProjects(previous => previous.map(project => project.id === refreshed.id ? refreshed : project));
+      const selectedIds = new Set(updatedItem.scenarios.map(s => s.id));
+      setSelectedItem({ ...updatedItem, scenarios: refreshed.scenarios.filter(s => selectedIds.has(s.id)) });
+    } else {
       setSelectedItem(updatedItem);
-    } catch (error) { console.error(error); alert('Perubahan scenario project gagal disimpan.'); }
+    }
     return;
   }
+  if (JSON.stringify(updatedItem.scenarios) === JSON.stringify(selectedItem?.scenarios)) return;
   const editedAt = new Date().toISOString();
-
-  const revision = {
-    editedAt,
-    scenarios: selectedItem?.scenarios || updatedItem.scenarios,
-  };
-
-  const withMetadata: HistoryItem = {
+  const savedItem = await updateHistoryToApi({
     ...updatedItem,
     lastEditedAt: editedAt,
     revisionHistory: [
       ...(updatedItem.revisionHistory || []),
-      revision,
+      { editedAt, scenarios: selectedItem?.scenarios || updatedItem.scenarios },
     ].slice(-10),
-  };
-
-  try {
-    const savedItem = await updateHistoryToApi(withMetadata);
-    const updatedHistory = await getHistoryFromApi();
-
-    setHistoryItems(updatedHistory);
-    setSelectedItem(savedItem);
-  } catch (error) {
-    console.error(error);
-    alert('Perubahan gagal disimpan ke database.');
-  }
+  });
+  setHistoryItems(previous => previous.map(item => item.id === savedItem.id ? savedItem : item));
+  setSelectedItem(savedItem);
 };
 
   // Remove history key from storage
@@ -267,7 +256,7 @@ const handleDeleteHistory = async (id: string) => {
     <div className="min-h-screen bg-slate-50 flex font-sans antialiased text-slate-900">
       
       {/* Sidebar Nav */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userRole={user.displayName} plan="Member · Shared Workspace" onLogout={onLogout} loggingOut={loggingOut} />
 
       {/* Main workspace panels */}
       <main className="flex-1 pl-64 h-screen min-h-0 overflow-hidden flex flex-col">
@@ -313,6 +302,7 @@ const handleDeleteHistory = async (id: string) => {
             selectedItem ? (
               <ResultEditor
                 item={selectedItem}
+                currentTesterName={user.displayName || user.username}
                 onSave={handleSaveResult}
                 onRegenerate={handleRegenerate}
                 onDeleteProjectScenario={projectContext ? async (scenarioId) => { await deleteProjectScenarioApi(projectContext, scenarioId); setProjects(await getProjectsFromApi()); } : undefined}

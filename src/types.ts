@@ -6,6 +6,7 @@ export interface TestCase {
   expectedResult: string;
   coverageType?: 'Positive' | 'Negative' | 'Validation' | 'Boundary';
   testerName?: string;
+  isManual?: boolean;
   testingType?: 'Functional' | 'Integration' | 'Regression' | 'Performance' | 'Security' | 'Usability';
   testingStatus?: 'Not Started' | 'In Progress' | 'Passed' | 'Failed' | 'Blocked';
 }

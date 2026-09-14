@@ -1,6 +1,7 @@
 import express from 'express';
 import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
+import { assignTesters, sessionTester } from '../services/tester';
 function getProjectById(db: Database.Database, id: string) {
   const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as any;
   if (!project) return undefined;
@@ -12,7 +13,7 @@ function getProjectById(db: Database.Database, id: string) {
       id: scenario.scenario_id, name: scenario.name, description: scenario.description, moduleName: scenario.module_name || project.name,
       sourceGenerationId: scenario.source_generation_id,
       count: (db.prepare('SELECT COUNT(*) AS count FROM project_test_cases WHERE scenario_id = ?').get(scenario.scenario_id) as any)?.count || 0,
-      testCases: db.prepare(`SELECT id, test_id AS testId, scenario, step, expected_result AS expectedResult, coverage_type AS coverageType, tester_name AS testerName, testing_type AS testingType, testing_status AS testingStatus FROM project_test_cases WHERE scenario_id = ? ORDER BY sort_order`).all(scenario.scenario_id),
+      testCases: db.prepare(`SELECT id, test_id AS testId, scenario, step, expected_result AS expectedResult, coverage_type AS coverageType, tester_name AS testerName, is_manual AS isManual, testing_type AS testingType, testing_status AS testingStatus FROM project_test_cases WHERE scenario_id = ? ORDER BY sort_order`).all(scenario.scenario_id).map((tc: any) => ({ ...tc, isManual: Boolean(tc.isManual) })),
     })),
   };
 }
@@ -43,7 +44,12 @@ export function registerProjectRoutes(app: express.Express, db: Database.Databas
   app.post('/api/projects/:id/scenarios', (req, res) => {
     const project = getProjectById(db, req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found.' });
-    const scenario = req.body.scenario;
+    const sourceCases = db.prepare(`
+      SELECT tc.id, tc.tester_name AS testerName, tc.is_manual AS isManual FROM test_cases tc
+      JOIN scenarios s ON s.id = tc.scenario_id
+      WHERE s.generation_id = ? AND s.id = ?
+    `).all(req.body.generationId || '', req.body.scenario?.id || '') as any[];
+    const scenario = assignTesters(req.body.scenario, sessionTester(res.locals.user), sourceCases);
     const now = new Date().toISOString();
     const sourceGenerationId = req.body.generationId || null;
     const moduleName = String(req.body.moduleName || project.name);
@@ -55,14 +61,18 @@ export function registerProjectRoutes(app: express.Express, db: Database.Databas
         projectScenarioId = `ps-${req.params.id}-${randomUUID()}`;
       }
       db.prepare('INSERT OR REPLACE INTO project_scenarios (project_id, scenario_id, source_generation_id, name, description, module_name, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)').run(req.params.id, projectScenarioId, sourceGenerationId, scenario.name, scenario.description || '', moduleName, project.scenarios.length);
-      (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, coverage_type, tester_name, testing_type, testing_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(`ptc-${randomUUID()}`, req.params.id, projectScenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.coverageType || 'Positive', tc.testerName || 'Verdo Daviarta', tc.testingType || 'Functional', tc.testingStatus || 'Not Started'));
+      (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, coverage_type, tester_name, testing_type, testing_status, is_manual) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(`ptc-${randomUUID()}`, req.params.id, projectScenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.coverageType || 'Positive', tc.testerName, tc.testingType || 'Functional', tc.testingStatus || 'Not Started', tc.isManual ? 1 : 0));
       db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now, req.params.id);
     });
     transaction(); res.status(201).json(getProjectById(db, req.params.id));
   });
   app.put('/api/projects/:projectId/scenarios/:scenarioId', (req, res) => {
     if (!getProjectById(db, req.params.projectId)) return res.status(404).json({ error: 'Project not found.' });
-    const scenario = req.body.scenario; const now = new Date().toISOString();
+    const existingCases = db.prepare('SELECT id, tester_name AS testerName, is_manual AS isManual FROM project_test_cases WHERE project_id = ? AND scenario_id = ?')
+      .all(req.params.projectId, req.params.scenarioId) as any[];
+    const scenario = assignTesters(req.body.scenario, sessionTester(res.locals.user), existingCases);
+    const existingIds = new Set(existingCases.map(tc => tc.id));
+    const now = new Date().toISOString();
     const transaction = db.transaction(() => {
       const existing = db.prepare('SELECT 1 FROM project_scenarios WHERE project_id = ? AND scenario_id = ?').get(req.params.projectId, req.params.scenarioId);
       if (existing) {
@@ -72,7 +82,7 @@ export function registerProjectRoutes(app: express.Express, db: Database.Databas
         db.prepare('INSERT INTO project_scenarios (project_id, scenario_id, source_generation_id, name, description, module_name, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)').run(req.params.projectId, req.params.scenarioId, null, scenario.name, scenario.description || '', scenario.moduleName || '', count);
       }
        db.prepare('DELETE FROM project_test_cases WHERE project_id = ? AND scenario_id = ?').run(req.params.projectId, req.params.scenarioId);
-       (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, coverage_type, tester_name, testing_type, testing_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(`ptc-${randomUUID()}`, req.params.projectId, req.params.scenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.coverageType || 'Positive', tc.testerName || 'Verdo Daviarta', tc.testingType || 'Functional', tc.testingStatus || 'Not Started'));
+       (scenario.testCases || []).forEach((tc: any, index: number) => db.prepare('INSERT INTO project_test_cases (id, project_id, scenario_id, test_id, scenario, step, expected_result, sort_order, coverage_type, tester_name, testing_type, testing_status, is_manual) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(existingIds.has(tc.id) ? tc.id : `ptc-${randomUUID()}`, req.params.projectId, req.params.scenarioId, tc.testId, tc.scenario, tc.step, tc.expectedResult, index, tc.coverageType || 'Positive', tc.testerName, tc.testingType || 'Functional', tc.testingStatus || 'Not Started', tc.isManual ? 1 : 0));
       db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now, req.params.projectId);
     });
     transaction(); res.json(getProjectById(db, req.params.projectId));

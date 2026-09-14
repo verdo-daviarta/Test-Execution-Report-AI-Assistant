@@ -17,6 +17,7 @@ Pengguna dapat memasukkan spesifikasi modul, requirement, business rules, piliha
 - Pencarian dan filter scenario.
 - Regenerate hasil dan export CSV.
 - History generation dan Project tersimpan di SQLite pada server.
+- Login/logout untuk empat akun lokal dengan permission member yang sama.
 
 ## Teknologi
 
@@ -52,8 +53,8 @@ OPENAI_MODEL="gpt-4o-mini"
 GEMINI_API_KEY="AIza..."
 GEMINI_MODEL="gemini-2.0-flash"
 
-# Opsional: proteksi endpoint backend
-INTERNAL_API_KEY=""
+# Cookie Secure untuk akses HTTPS (production otomatis mengaktifkannya)
+AUTH_COOKIE_SECURE="false"
 ```
 
 Provider yang dipilih dari form akan digunakan untuk generation tersebut. `AI_PROVIDER` hanya digunakan sebagai provider default.
@@ -61,6 +62,8 @@ Provider yang dipilih dari form akan digunakan untuk generation tersebut. `AI_PR
 Jangan menulis API key di source code. File `.env` sudah dikecualikan dari Git melalui `.gitignore`.
 
 ## Menjalankan Development
+
+Pada instalasi baru, jalankan `npm.cmd run setup-users` sekali untuk membuat `qa1` sampai `qa4`. Password acak tersedia di file lokal `data/initial-user-credentials.txt`; jangan commit atau bagikan file ini secara publik. Lihat [panduan multi-user](backend/MULTI_USER.md).
 
 ```bash
 npm run dev
@@ -79,7 +82,7 @@ npm start
 
 ## Alur Penggunaan
 
-1. Buka menu **New Generation**.
+1. Login, kemudian buka menu **New Generation** dan pilih/buat Project.
 2. Isi nama modul, requirement, dan business rules.
 3. Pilih coverage yang diperlukan.
 4. Pilih provider OpenAI atau Google Gemini.
@@ -110,7 +113,7 @@ Nilai `provider` yang didukung: `openai` dan `gemini`.
 
 ## Penyimpanan Data
 
-History dan Project disimpan di `data/test-execution-report.db` pada server. Perangkat yang mengakses backend yang sama memakai data bersama; muat ulang History untuk mengambil data terbaru. Autentikasi dan pembatasan akses berdasarkan anggota tim/project belum tersedia.
+History dan Project disimpan di `data/test-execution-report.db` pada server. Semua akun yang sudah login memakai data bersama; muat ulang History untuk mengambil data terbaru. Pembatasan akses berdasarkan tim/project belum tersedia.
 
 ## Arsitektur
 
@@ -121,7 +124,8 @@ Frontend menggunakan API client, route generation meneruskan request ke service,
 - Jangan commit file `.env`.
 - Jangan membagikan API key ke repository publik.
 - Screenshot yang diunggah akan dikirim ke provider AI yang dipilih.
-- Gunakan `INTERNAL_API_KEY` untuk proteksi dasar endpoint backend.
+- Semua API data memerlukan session login; browser tidak lagi menggunakan `INTERNAL_API_KEY` atau `VITE_INTERNAL_API_KEY`.
+- Gunakan HTTPS untuk deployment dan lindungi file credential awal. Lihat [batas keamanan dan cara login](backend/MULTI_USER.md).
 
 ## Status Project
 

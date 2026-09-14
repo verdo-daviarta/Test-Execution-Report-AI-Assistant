@@ -42,12 +42,13 @@ Referensi: [Structured Outputs](https://developers.openai.com/api/docs/guides/st
 
 ## Batas multi-user
 
-History masih dibagikan secara global kepada pengguna yang dapat mengakses backend.
-Project mengelompokkan scenario, tetapi belum menjadi batas otorisasi.
-Belum ada login, user/team membership, role, atau pemeriksaan akses per project.
-Shared `INTERNAL_API_KEY` bukan identitas pengguna; nilai `VITE_*` dapat terlihat oleh browser.
+Empat user lokal memiliki permission member yang sama dalam satu workspace bersama.
+`backend/app.ts` memasang autentikasi sebelum route data; login/logout dan session SQLite tersedia.
+History/Project hanya dapat diakses setelah login, tetapi belum ada isolasi per tim/project.
+Browser tidak lagi menggunakan shared `INTERNAL_API_KEY` atau nilai `VITE_*` untuk autentikasi.
+Lihat [konsep, akun awal, dan batas keamanan multi-user](MULTI_USER.md).
 
-Tahap selanjutnya perlu identitas user, team/project membership, relasi History ke project,
+Tahap selanjutnya perlu team/project membership, relasi History ke project,
 otorisasi server pada setiap operasi, migrasi data lama, dan kontrol konflik penyuntingan.
 Jangan menganggap refactor ini sudah mengisolasi data antar tim.
 

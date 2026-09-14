@@ -14,6 +14,10 @@ let base: string;
 beforeAll(async () => {
   const app = express();
   app.use(express.json());
+  app.use((_req, res, next) => {
+    res.locals.user = { id: 'qa-test', username: 'QA', displayName: 'QA' };
+    next();
+  });
   registerHistoryRoutes(app, db);
   registerProjectRoutes(app, db);
   registerGenerationRoute(app, createGenerationService({ openai: { async generate() { throw new Error('private upstream detail'); } } }));

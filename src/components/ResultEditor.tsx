@@ -3,15 +3,19 @@ import { RefreshCw, Save, Download, Trash, Plus, Check, Filter, Sparkles, Chevro
 import { HistoryItem, Scenario, TestCase } from '../types';
 import { createId } from '../utils/id';
 import ConfirmDialog from './ConfirmDialog';
+import { createManualTestCase } from '../utils/manualTestCase';
+import { MANUAL_COVERAGES, validateManualCases } from '../../shared/manual-cases';
+import { ApiError } from '../utils/apiError';
 
 interface ResultEditorProps {
   item: HistoryItem;
-  onSave: (updatedItem: HistoryItem) => void;
+  currentTesterName?: string;
+  onSave: (updatedItem: HistoryItem) => Promise<void> | void;
   onRegenerate: () => void;
   onDeleteProjectScenario?: (scenarioId: string) => Promise<void>;
 }
 
-export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProjectScenario }: ResultEditorProps) {
+export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProjectScenario, currentTesterName = '' }: ResultEditorProps) {
   const [scenarios, setScenarios] = useState<Scenario[]>(item.scenarios);
   const [activeScenarioId, setActiveScenarioId] = useState<string>(
     item.scenarios[0]?.id || ''
@@ -19,6 +23,15 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
   const [filterQuery, setFilterQuery] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<string>('Just now');
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [saveError, setSaveError] = useState('');
+  const [retryUntil, setRetryUntil] = useState(0);
+  useEffect(() => {
+    if (!retryUntil) return;
+    const timer = window.setTimeout(() => setRetryUntil(0), Math.max(0, retryUntil - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [retryUntil]);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ type: 'testCase' | 'scenario'; id: string; name: string } | null>(null);
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
@@ -27,7 +40,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
   useEffect(() => {
     setScenarios(item.scenarios);
     if (item.scenarios.length > 0) {
-      setActiveScenarioId(item.scenarios[0].id);
+      setActiveScenarioId(current => item.scenarios.some(s => s.id === current) ? current : item.scenarios[0].id);
     }
   }, [item]);
 
@@ -45,22 +58,30 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
     return groups;
   }, {});
 
-  // Save the entire state back to database
-  const commitChanges = (updatedScenarios = scenarios) => {
-    const totalTCs = updatedScenarios.reduce((sum, s) => sum + s.testCases.length, 0);
-    const updated: HistoryItem = {
-      ...item,
-      scenarios: updatedScenarios,
-      scenarioCount: updatedScenarios.length,
-      testCaseCount: totalTCs,
-    };
-    onSave(updated);
-    
-    // Toast update
-    setToastMessage('Changes successfully saved to persistent workspace.');
-    setTimeout(() => setToastMessage(null), 3000);
-    const now = new Date();
-    setLastSaved(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+  const commitChanges = async (updatedScenarios = scenarios) => {
+    if (savingRef.current || Date.now() < retryUntil) return;
+    setSaveError('');
+    setToastMessage(null);
+    try {
+      validateManualCases(updatedScenarios);
+      savingRef.current = true;
+      setIsSaving(true);
+      await onSave({
+        ...item, scenarios: updatedScenarios, scenarioCount: updatedScenarios.length,
+        testCaseCount: updatedScenarios.reduce((sum, scenario) => sum + scenario.testCases.length, 0),
+      });
+      setToastMessage('Changes successfully saved to database.');
+      const now = new Date();
+      setLastSaved(now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'));
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Penyimpanan gagal. Draft Anda tetap tersedia.');
+      if (error instanceof ApiError && error.retryAfterSeconds) {
+        setRetryUntil(Date.now() + error.retryAfterSeconds * 1000);
+      }
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   const updateMetadata = (caseId: string, field: keyof TestCase, value: string) => handleTestCaseChange(caseId, field, value);
@@ -94,35 +115,16 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
     setScenarios(updatedScenarios);
   };
 
-  // Add individual test case row
+  // Manual rows are local drafts only. No API or AI call until explicit Save.
   const addTestCaseRow = () => {
-    if (!activeScenarioId) return;
-    const currentTCs = activeScenario?.testCases || [];
-    const nextCode = currentTCs.length + 1;
-    const codeStr = nextCode < 10 ? `TC-00${nextCode}` : `TC-0${nextCode}`;
-
-    const newRow: TestCase = {
-      id: createId('tc-dynamic'),
-      testId: codeStr,
-      scenario: 'New behavior specification',
-      step: '1. Action phase\n2. Verify state outcome',
-      expectedResult: 'Expected outcome successfully checked.',
-      coverageType: 'Positive',
-    };
-
-    const updatedScenarios = scenarios.map((s) => {
-      if (s.id === activeScenarioId) {
-        return {
-          ...s,
-          count: s.testCases.length + 1,
-          testCases: [...s.testCases, newRow],
-        };
-      }
-      return s;
-    });
-
-    setScenarios(updatedScenarios);
-    commitChanges(updatedScenarios);
+    if (!activeScenarioId || savingRef.current) return;
+    setScenarios(previous => previous.map(scenario => scenario.id === activeScenarioId ? {
+      ...scenario,
+      count: scenario.testCases.length + 1,
+      testCases: [...scenario.testCases, createManualTestCase(currentTesterName)],
+    } : scenario));
+    setToastMessage(null);
+    setSaveError('');
   };
 
   // Delete individual test case row
@@ -137,6 +139,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
         const remaining = s.testCases.filter((tc) => tc.id !== caseId);
         // Clean testId sequence
         const sequenced = remaining.map((tc, index) => {
+          if (tc.isManual) return tc;
           const nextVal = index + 1;
           const code = nextVal < 10 ? `TC-00${nextVal}` : `TC-0${nextVal}`;
           return { ...tc, testId: code };
@@ -166,6 +169,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
           step: '1. Navigate to endpoint\n2. Enter details\n3. Push trigger',
           expectedResult: 'Operation resolves properly.',
           coverageType: 'Positive',
+          testerName: currentTesterName,
         },
       ],
     };
@@ -213,7 +217,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
       tc.step.replace(/\n/g, '; '),
       tc.expectedResult,
       tc.coverageType || 'Positive',
-      tc.testerName || 'Verdo Daviarta',
+      tc.testerName || '',
       tc.testingType || 'Functional',
       tc.testingStatus || 'Not Started',
     ]);
@@ -244,6 +248,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
       const updatedScenarios = scenarios.map((s) => {
         if (s.id === activeScenarioId) {
           const optimized = s.testCases.map((tc) => {
+            if (tc.isManual) return tc;
             let step = tc.step;
             let result = tc.expectedResult;
             
@@ -278,6 +283,8 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
 
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-64px)] overflow-hidden relative">
+      <fieldset disabled={isSaving || isOptimizing} className="contents">
+      {saveError && <div role="alert" className="p-3 bg-red-50 text-red-700 text-sm">{saveError}</div>}
       
       {/* Toast Alert */}
       {toastMessage && (
@@ -443,11 +450,12 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
 
               <button
                 onClick={() => commitChanges()}
+                disabled={isSaving || retryUntil > Date.now()}
                 className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all bg-white cursor-pointer shadow-sm"
-                title="Commit state changes to browser workspace cache"
+                title="Save changes to database"
               >
                 <Save size={13} className="stroke-2" />
-                <span>Save Changes</span>
+                <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
               </button>
 
               <button
@@ -486,6 +494,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
                       <input
                         type="text"
                         value={tc.testId}
+                        aria-label="Test ID"
                         onChange={(e) => handleTestCaseChange(tc.id, 'testId', e.target.value)}
                         className="w-full bg-transparent border-none p-0 font-mono text-xs text-slate-800 font-bold focus:ring-1 focus:ring-blue-500 rounded-sm outline-none px-1"
                       />
@@ -495,6 +504,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
                     <td className="px-6 py-4.5 align-top">
                       <textarea
                         value={tc.scenario}
+                        aria-label="Scenario Target"
                         onChange={(e) => handleTestCaseChange(tc.id, 'scenario', e.target.value)}
                         rows={Math.max(2, tc.scenario.split('\n').length)}
                         className="w-full bg-transparent border-none p-1 text-xs text-slate-800 leading-relaxed focus:bg-slate-50 focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-semibold"
@@ -505,8 +515,9 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
                     <td className="px-6 py-4.5 align-top">
                       <textarea
                         value={tc.step}
+                        aria-label="Execution Steps"
                         onChange={(e) => handleTestCaseChange(tc.id, 'step', e.target.value)}
-                        onBlur={(e) => handleTestCaseChange(tc.id, 'step', normalizeSteps(e.target.value))}
+                        onBlur={(e) => { if (!tc.isManual) handleTestCaseChange(tc.id, 'step', normalizeSteps(e.target.value)); }}
                         rows={Math.max(3, tc.step.split('\n').length)}
                         className="w-full bg-transparent border-none p-2 text-xs text-slate-600 leading-6 focus:bg-slate-50 focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-mono whitespace-pre-wrap wrap-break-words"
                       />
@@ -516,6 +527,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
                     <td className="px-6 py-4.5 align-top">
                       <textarea
                         value={tc.expectedResult}
+                        aria-label="Expected Outcome"
                         onChange={(e) => handleTestCaseChange(tc.id, 'expectedResult', e.target.value)}
                         rows={Math.max(3, tc.expectedResult.split('\n').length)}
                         className="w-full bg-transparent border-none p-1 text-xs text-slate-850 leading-relaxed focus:bg-slate-50 focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-medium"
@@ -524,11 +536,16 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
 
                     {/* AI-generated coverage classification is intentionally read-only. */}
                     <td className="px-3 py-4.5 align-top">
-                      <span className="inline-flex min-w-28 justify-center rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">
+                      {tc.isManual ? <select aria-label="Coverage Test" value={tc.coverageType || ''}
+                        onChange={e => updateMetadata(tc.id, 'coverageType', e.target.value)}
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs">
+                        <option value="" disabled>Pilih coverage</option>
+                        {MANUAL_COVERAGES.map(coverage => <option key={coverage} value={coverage}>{coverage.toUpperCase()}</option>)}
+                      </select> : <span className="inline-flex min-w-28 justify-center rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">
                         {tc.coverageType || 'Positive'}
-                      </span>
+                      </span>}
                     </td>
-                    <td className="px-3 py-4.5 align-top"><input value={tc.testerName || 'Verdo Daviarta'} onChange={e => updateMetadata(tc.id, 'testerName', e.target.value)} className="w-32 bg-slate-50/60 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-medium outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder:text-slate-400" /></td>
+                    <td className="px-3 py-4.5 align-top"><input value={tc.testerName || ''} readOnly aria-label="Nama tester (pembuat test case)" className="w-32 bg-slate-50/60 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-medium outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder:text-slate-400" /></td>
                     <td className="px-3 py-4.5 align-top"><select value={tc.testingType || 'Functional'} onChange={e => updateMetadata(tc.id, 'testingType', e.target.value)} className="w-32 bg-slate-50/60 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-medium outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"><option>Functional</option><option>Integration</option><option>Regression</option><option>Performance</option><option>Security</option><option>Usability</option></select></td>
                     <td className="px-3 py-4.5 align-top"><select value={tc.testingStatus || 'Not Started'} onChange={e => updateMetadata(tc.id, 'testingStatus', e.target.value)} className="w-32 bg-slate-50/60 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-medium outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"><option>Not Started</option><option>In Progress</option><option>Passed</option><option>Failed</option><option>Blocked</option></select></td>
 
@@ -577,7 +594,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
               <span className="w-px h-3 bg-slate-200"></span>
               <span className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
-                <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wide">AI Sync Active</span>
+                <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wide">Manual editing</span>
               </span>
             </div>
             <div className="text-[10px] font-mono text-slate-400">
@@ -603,6 +620,7 @@ export default function ResultEditor({ item, onSave, onRegenerate, onDeleteProje
         </button>
       </div>
 
+      </fieldset>
     </div>
   );
 }

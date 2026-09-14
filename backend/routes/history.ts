@@ -1,5 +1,6 @@
 import express from 'express';
 import type Database from 'better-sqlite3';
+import { assignTesters, sessionTester } from '../services/tester';
 function getGenerationById(db: Database.Database, id: string) {
   const generation = db
     .prepare('SELECT * FROM generations WHERE id = ?')
@@ -56,13 +57,14 @@ function getGenerationById(db: Database.Database, id: string) {
             expected_result AS expectedResult,
             coverage_type AS coverageType,
             tester_name AS testerName,
+            is_manual AS isManual,
             testing_type AS testingType,
             testing_status AS testingStatus
           FROM test_cases
           WHERE scenario_id = ?
           ORDER BY sort_order
         `)
-        .all(scenario.id),
+        .all(scenario.id).map((tc: any) => ({ ...tc, isManual: Boolean(tc.isManual) })),
     })),
   };
 }
@@ -89,7 +91,10 @@ app.get('/api/generations', (_req, res) => {
   );
 });
 
-  const saveGeneration = (item: any) => {
+  const saveGeneration = (input: any, actor: string) => {
+    const previous = getGenerationById(db, input.id);
+    const existingCases = previous?.scenarios.flatMap(s => s.testCases) || [];
+    const item = { ...input, scenarios: (input.scenarios || []).map((s: any) => assignTesters(s, actor, existingCases)) };
     const createdAt = item.createdAt || new Date().toISOString();
     const transaction = db.transaction(() => {
       db.prepare(`
@@ -114,8 +119,8 @@ app.get('/api/generations', (_req, res) => {
         VALUES (?, ?, ?, ?, ?)
       `);
       const insertTestCase = db.prepare(`
-        INSERT INTO test_cases (id, scenario_id, test_id, scenario, step, expected_result, sort_order, coverage_type, tester_name, testing_type, testing_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO test_cases (id, scenario_id, test_id, scenario, step, expected_result, sort_order, coverage_type, tester_name, testing_type, testing_status, is_manual)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       (item.scenarios || []).forEach((scenario: any, scenarioIndex: number) => {
@@ -130,9 +135,10 @@ app.get('/api/generations', (_req, res) => {
             testCase.expectedResult,
             testCaseIndex,
             testCase.coverageType || 'Positive',
-            testCase.testerName || 'Verdo Daviarta',
+            testCase.testerName,
             testCase.testingType || 'Functional',
             testCase.testingStatus || 'Not Started',
+            testCase.isManual ? 1 : 0,
           );
         });
       });
@@ -143,7 +149,8 @@ app.get('/api/generations', (_req, res) => {
   };
 
   app.post('/api/generations', (req, res) => {
-    const saved = saveGeneration(req.body);
+    if (getGenerationById(db, req.body.id)) return res.status(409).json({ error: 'Generation already exists.' });
+    const saved = saveGeneration(req.body, sessionTester(res.locals.user));
     res.status(201).json(saved);
   });
 
@@ -154,7 +161,7 @@ app.get('/api/generations', (_req, res) => {
     if (!getGenerationById(db, req.params.id)) {
       return res.status(404).json({ error: 'Generation not found.' });
     }
-    res.json(saveGeneration(req.body));
+    res.json(saveGeneration(req.body, sessionTester(res.locals.user)));
   });
 
 app.delete('/api/generations/:id', (req, res) => {

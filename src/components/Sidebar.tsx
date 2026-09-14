@@ -1,14 +1,16 @@
 import React from 'react';
-import { Bot, FolderKanban, PlusCircle, Settings, HelpCircle } from 'lucide-react';
+import { Bot, FolderKanban, PlusCircle, Settings, HelpCircle, LogOut, History } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: 'new_generation' | 'history' | 'project' | 'result_editor';
   setActiveTab: (tab: 'new_generation' | 'history' | 'project' | 'result_editor') => void;
   userRole?: string;
   plan?: string;
+  onLogout: () => void;
+  loggingOut: boolean;
 }
 
-export default function Sidebar({ activeTab, setActiveTab, userRole = "Verdo Daviarta", plan = "Team Leader" }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, userRole = "Member", plan = "Shared Workspace", onLogout, loggingOut }: SidebarProps) {
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-50 text-slate-400">
       {/* Brand Header */}
@@ -51,10 +53,17 @@ export default function Sidebar({ activeTab, setActiveTab, userRole = "Verdo Dav
           <FolderKanban size={18} className={activeTab === 'project' ? 'text-blue-500' : 'opacity-80'} />
           <span>Project</span>
         </button>
+        <button onClick={() => setActiveTab('history')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-left font-semibold ${activeTab === 'history' ? 'bg-slate-800 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+          <History size={18} aria-hidden="true" /><span>History</span>
+        </button>
       </nav>
 
       {/* Footer Settings & Account */}
       <div className="mt-auto border-t border-slate-800 p-4">
+        <button onClick={onLogout} disabled={loggingOut} className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 hover:text-white disabled:opacity-50">
+          <LogOut size={18} aria-hidden="true" /><span>{loggingOut ? 'Keluar...' : 'Logout'}</span>
+        </button>
         <button className="w-full flex items-center gap-3 text-slate-400 px-4 py-2 hover:bg-slate-800 hover:text-white transition-colors rounded-lg text-sm text-left font-semibold cursor-pointer">
           <Settings size={18} className="opacity-80" />
           <span>Settings</span>
